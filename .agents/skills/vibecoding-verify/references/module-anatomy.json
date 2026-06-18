@@ -1,0 +1,29 @@
+{
+  "backend": {
+    "requiredFiles": [
+      "migrations/sqlite/*.sql",
+      "migrations/pg/*.sql",
+      "{name}.schema.ts",
+      "{name}.types.ts",
+      "{name}.repository.ts",
+      "{name}.service.ts",
+      "{name}.controller.ts",
+      "{name}.routes.ts",
+      "index.ts"
+    ],
+    "forbiddenImportsInModule": ["better-sqlite3", "pg"],
+    "forbiddenSqlInLayers": ["service", "controller"]
+  },
+  "frontend": {
+    "requiredFiles": [
+      "api/index.ts",
+      "types/index.ts",
+      "store/index.ts",
+      "routes.ts",
+      "index.ts",
+      "views/*.vue"
+    ],
+    "forbiddenFetchInLayers": ["views", "components", "store"],
+    "httpOnlyIn": "api"
+  }
+}

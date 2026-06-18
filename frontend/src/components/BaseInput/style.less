@@ -1,0 +1,57 @@
+.base-input {
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  background-color: @color-bg;
+  border: 1px solid @color-border-strong;
+  border-radius: @radius-md;
+  transition: border-color @transition-fast, box-shadow @transition-fast;
+
+  &:focus-within {
+    border-color: @color-primary;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  }
+
+  &--invalid {
+    border-color: @color-danger;
+    &:focus-within {
+      border-color: @color-danger;
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+    }
+  }
+
+  &--disabled {
+    background-color: @color-bg-muted;
+    color: @color-text-disabled;
+    cursor: not-allowed;
+  }
+
+  &__inner {
+    flex: 1;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    outline: none;
+    color: @color-text;
+
+    &::placeholder {
+      color: @color-text-disabled;
+    }
+  }
+
+  &--sm {
+    height: 28px;
+    padding: 0 @space-md;
+    font-size: @font-size-sm;
+  }
+  &--md {
+    height: 36px;
+    padding: 0 @space-md;
+    font-size: @font-size-md;
+  }
+  &--lg {
+    height: 44px;
+    padding: 0 @space-lg;
+    font-size: @font-size-lg;
+  }
+}

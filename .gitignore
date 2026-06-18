@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Coverage
+coverage/
+
+# Vendored plugins (run: bash scripts/install-superpowers.sh)
+vendor/superpowers/
+
+# Sqlite data
+backend/data/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Local submission packages
+submission/*.zip
