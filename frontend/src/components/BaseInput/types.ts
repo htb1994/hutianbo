@@ -2,7 +2,7 @@ export type BaseInputSize = 'sm' | 'md' | 'lg'
 
 export interface BaseInputProps {
   modelValue?: string | number
-  type?: 'text' | 'password' | 'email' | 'number' | 'search' | 'tel' | 'url'
+  type?: 'text' | 'password' | 'email' | 'number' | 'search' | 'tel' | 'url' | 'date'
   size?: BaseInputSize
   placeholder?: string
   disabled?: boolean

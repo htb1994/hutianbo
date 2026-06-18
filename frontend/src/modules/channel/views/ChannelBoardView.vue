@@ -7,6 +7,10 @@ import ChannelSchoolCard from '../components/ChannelSchoolCard.vue'
 import { useChannelBoard } from '../composables/useChannelBoard'
 import type { Channel, ChannelCreateInput, ChannelStage } from '../types'
 
+type ChannelForm = Omit<ChannelCreateInput, 'nextFollowUpAt'> & {
+  nextFollowUpAt: string
+}
+
 const {
   items,
   loading,
@@ -21,7 +25,7 @@ const {
   remove,
 } = useChannelBoard()
 const submitting = ref(false)
-const form = reactive<ChannelCreateInput>({
+const form = reactive<ChannelForm>({
   agentName: '',
   agentOwner: '',
   city: '',
@@ -30,7 +34,7 @@ const form = reactive<ChannelCreateInput>({
   leadCount: 0,
   trialCount: 0,
   paidCount: 0,
-  nextFollowUpAt: null,
+  nextFollowUpAt: '',
   note: '',
 })
 
@@ -73,7 +77,7 @@ async function onAdd() {
     form.leadCount = 0
     form.trialCount = 0
     form.paidCount = 0
-    form.nextFollowUpAt = null
+    form.nextFollowUpAt = ''
     form.note = ''
   } finally {
     submitting.value = false

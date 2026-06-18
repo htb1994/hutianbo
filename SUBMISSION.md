@@ -76,4 +76,14 @@ verify: ALL PASSED
 
 ## GitHub/GitLab
 
-当前目录不是 git 仓库，因此无法自动读取远程仓库地址。提交作业时可以直接上传压缩包；如果需要仓库链接，可以先初始化 git 并推送到 GitHub/GitLab。
+项目代码：
+
+```text
+https://github.com/htb1994/hutianbo
+```
+
+在线部署说明：
+
+```text
+DEPLOYMENT.md
+```

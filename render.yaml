@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: channel-sales-ops
+    runtime: node
+    plan: free
+    buildCommand: npm run deploy:build
+    startCommand: npm run deploy:start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: DB_DIALECT
+        value: sqlite
+      - key: DB_SQLITE_FILE
+        value: ./data/prod.db
