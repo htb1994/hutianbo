@@ -2,6 +2,7 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
 
 import { channelRoutes } from '@/modules/channel'
+import { summerSopRoutes } from '@/modules/summersop'
 import { todoRoutes } from '@/modules/todo'
 
 const routes: RouteRecordRaw[] = [
@@ -15,6 +16,7 @@ const routes: RouteRecordRaw[] = [
         redirect: { name: 'channel-list' },
       },
       ...channelRoutes,
+      ...summerSopRoutes,
       ...todoRoutes,
     ],
   },

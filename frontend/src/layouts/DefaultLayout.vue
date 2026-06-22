@@ -7,6 +7,8 @@ import { RouterLink, RouterView } from 'vue-router'
     <header class="layout__header">
       <RouterLink to="/" class="layout__brand">vibeCoding</RouterLink>
       <nav class="layout__nav">
+        <RouterLink to="/channel" active-class="is-active">渠道转化</RouterLink>
+        <RouterLink to="/summer-sop" active-class="is-active">暑促SOP</RouterLink>
         <RouterLink to="/todos" active-class="is-active">Todos</RouterLink>
       </nav>
     </header>

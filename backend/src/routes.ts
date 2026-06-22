@@ -1,5 +1,6 @@
 import fp from 'fastify-plugin'
 import channelModule from './modules/channel'
+import summerSopModule from './modules/summersop'
 import todoModule from './modules/todo'
 
 /**
@@ -9,6 +10,7 @@ import todoModule from './modules/todo'
 export default fp(
   async (app) => {
     await app.register(channelModule)
+    await app.register(summerSopModule)
     await app.register(todoModule)
   },
   { name: 'app-routes' },
