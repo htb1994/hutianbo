@@ -5,7 +5,13 @@ import BaseInput from '@/components/BaseInput/index.vue'
 import BaseEmpty from '@/components/BaseEmpty/index.vue'
 import SummerSopCard from '../components/SummerSopCard.vue'
 import { useSummerSopList } from '../composables/useSummerSopList'
-import type { SummerSopCreateInput, SummerSopGoal, SummerSopGrade, SummerSopStage } from '../types'
+import type {
+  SummerSopCreateInput,
+  SummerSopGoal,
+  SummerSopGrade,
+  SummerSopStage,
+  SummerSopTone,
+} from '../types'
 
 const { items, latest, loading, fetchAll, create, remove } = useSummerSopList()
 const submitting = ref(false)
@@ -14,7 +20,7 @@ const form = reactive<Required<SummerSopCreateInput>>({
   stage: 'warmup',
   grade: 'primary',
   goal: 'activate_group',
-  tone: 'trust_conversion',
+  tone: 'balanced',
   topic: '7月暑促学习规划',
 })
 
@@ -39,6 +45,13 @@ const goalOptions: Array<{ value: SummerSopGoal; label: string }> = [
   { value: 'attendance_reminder', label: '提醒到课' },
   { value: 'after_class_conversion', label: '课后转化' },
   { value: 'deal_closing', label: '续报成交' },
+]
+
+const toneOptions: Array<{ value: SummerSopTone; label: string }> = [
+  { value: 'balanced', label: '信任+转化' },
+  { value: 'trust_first', label: '温和信任' },
+  { value: 'conversion_push', label: '强转化' },
+  { value: 'agent_ground', label: '代理商地推' },
 ]
 
 onMounted(() => fetchAll())
@@ -94,6 +107,14 @@ function onCopied(label: string) {
           <select v-model="form.goal">
             <option v-for="goal in goalOptions" :key="goal.value" :value="goal.value">
               {{ goal.label }}
+            </option>
+          </select>
+        </label>
+        <label>
+          <span>话术风格</span>
+          <select v-model="form.tone">
+            <option v-for="tone in toneOptions" :key="tone.value" :value="tone.value">
+              {{ tone.label }}
             </option>
           </select>
         </label>

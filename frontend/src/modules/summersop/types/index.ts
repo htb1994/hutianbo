@@ -15,12 +15,14 @@ export type SummerSopGoal =
   | 'after_class_conversion'
   | 'deal_closing'
 
+export type SummerSopTone = 'balanced' | 'trust_first' | 'conversion_push' | 'agent_ground'
+
 export interface Summersop {
   id: string
   stage: SummerSopStage
   grade: SummerSopGrade
   goal: SummerSopGoal
-  tone: 'trust_conversion'
+  tone: SummerSopTone
   topic: string
   communityNotice: string
   groupScript: string
@@ -37,7 +39,7 @@ export interface SummerSopCreateInput {
   stage?: SummerSopStage
   grade?: SummerSopGrade
   goal?: SummerSopGoal
-  tone?: 'trust_conversion'
+  tone?: SummerSopTone
   topic?: string
 }
 
@@ -45,7 +47,7 @@ export interface SummerSopUpdateInput {
   stage?: SummerSopStage
   grade?: SummerSopGrade
   goal?: SummerSopGoal
-  tone?: 'trust_conversion'
+  tone?: SummerSopTone
   topic?: string
   communityNotice?: string
   groupScript?: string

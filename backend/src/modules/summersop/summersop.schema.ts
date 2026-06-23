@@ -23,7 +23,9 @@ export const SummerSopCreateSchema = z.object({
   stage: SummerSopStageSchema.default('warmup'),
   grade: SummerSopGradeSchema.default('primary'),
   goal: SummerSopGoalSchema.default('activate_group'),
-  tone: z.enum(['trust_conversion']).default('trust_conversion'),
+  tone: z
+    .enum(['balanced', 'trust_first', 'conversion_push', 'agent_ground'])
+    .default('balanced'),
   topic: z.string().min(1).max(80).default('7月暑促学习规划'),
 })
 
@@ -32,7 +34,7 @@ export const SummerSopUpdateSchema = z
     stage: SummerSopStageSchema.optional(),
     grade: SummerSopGradeSchema.optional(),
     goal: SummerSopGoalSchema.optional(),
-    tone: z.enum(['trust_conversion']).optional(),
+    tone: z.enum(['balanced', 'trust_first', 'conversion_push', 'agent_ground']).optional(),
     topic: z.string().min(1).max(80).optional(),
     communityNotice: z.string().min(1).max(1200).optional(),
     groupScript: z.string().min(1).max(1200).optional(),
@@ -53,7 +55,7 @@ export const SummersopSchema = z.object({
   stage: SummerSopStageSchema,
   grade: SummerSopGradeSchema,
   goal: SummerSopGoalSchema,
-  tone: z.enum(['trust_conversion']),
+  tone: z.enum(['balanced', 'trust_first', 'conversion_push', 'agent_ground']),
   topic: z.string(),
   communityNotice: z.string(),
   groupScript: z.string(),
