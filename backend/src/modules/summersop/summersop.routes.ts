@@ -5,6 +5,7 @@ export async function summerSopRoutes(app: FastifyInstance) {
   app.get('/', summerSopController.list)
   app.get('/:id', summerSopController.get)
   app.post('/', summerSopController.create)
+  app.post('/feishu/generate', summerSopController.generateForFeishu)
   app.patch('/:id', summerSopController.update)
   app.delete('/:id', summerSopController.remove)
 }

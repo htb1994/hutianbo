@@ -1,7 +1,12 @@
 import { NotFoundError } from '@/utils/http-error'
 import { summerSopRepository } from './summersop.repository'
 import type { SummerSop } from './summersop.types'
-import type { SummerSopCreateInput, SummerSopUpdateInput } from './summersop.schema'
+import type {
+  SummerSopCreateInput,
+  SummerSopFeishuGenerateInput,
+  SummerSopFeishuGenerateResponse,
+  SummerSopUpdateInput,
+} from './summersop.schema'
 import {
   buildChecklist,
   gradeCopy,
@@ -12,6 +17,36 @@ import {
   stageLabels,
   toneCopy,
 } from './summersop.copy-library'
+
+const feishuGradeMap: Record<SummerSopFeishuGenerateInput['年级'], SummerSopCreateInput['grade']> = {
+  小学: 'primary',
+  初中: 'middle',
+  高中: 'high',
+}
+
+const feishuStageMap: Record<SummerSopFeishuGenerateInput['阶段'], SummerSopCreateInput['stage']> = {
+  暑促预热: 'warmup',
+  体验课邀约: 'invite',
+  到课提醒: 'attendance',
+  课后反馈: 'feedback',
+  限时转化: 'conversion',
+  最后催单: 'last_call',
+}
+
+const feishuGoalMap: Record<SummerSopFeishuGenerateInput['目标'], SummerSopCreateInput['goal']> = {
+  拉群活跃: 'activate_group',
+  体验课报名: 'trial_signup',
+  提醒到课: 'attendance_reminder',
+  课后转化: 'after_class_conversion',
+  续报成交: 'deal_closing',
+}
+
+const feishuToneMap: Record<SummerSopFeishuGenerateInput['语气'], SummerSopCreateInput['tone']> = {
+  均衡推进: 'balanced',
+  信任优先: 'trust_first',
+  强转化: 'conversion_push',
+  代理商地推: 'agent_ground',
+}
 
 function buildCommunityNotice(input: SummerSopCreateInput): string {
   const stage = stageLabels[input.stage]
@@ -87,6 +122,16 @@ function generateSop(input: SummerSopCreateInput): Omit<SummerSop, 'id' | 'creat
   }
 }
 
+function mapFeishuInput(input: SummerSopFeishuGenerateInput): SummerSopCreateInput {
+  return {
+    topic: input.主题,
+    grade: feishuGradeMap[input.年级],
+    stage: feishuStageMap[input.阶段],
+    goal: feishuGoalMap[input.目标],
+    tone: feishuToneMap[input.语气],
+  }
+}
+
 export const summerSopService = {
   list(): Promise<SummerSop[]> {
     return summerSopRepository.list()
@@ -100,6 +145,20 @@ export const summerSopService = {
 
   create(input: SummerSopCreateInput): Promise<SummerSop> {
     return summerSopRepository.create(input, generateSop(input))
+  },
+
+  generateForFeishu(input: SummerSopFeishuGenerateInput): SummerSopFeishuGenerateResponse {
+    const sop = generateSop(mapFeishuInput(input))
+    return {
+      fields: {
+        群公告: sop.communityNotice,
+        群内互动话术: sop.groupScript,
+        朋友圈文案: sop.momentsCopy,
+        私聊话术: sop.privateChatScript,
+        执行清单: sop.executionChecklist.join('\n'),
+        生成状态: '已生成',
+      },
+    }
   },
 
   async update(id: string, input: SummerSopUpdateInput): Promise<SummerSop> {

@@ -3,6 +3,7 @@ import { success } from '@/utils/response'
 import { summerSopService } from './summersop.service'
 import {
   SummerSopCreateSchema,
+  SummerSopFeishuGenerateSchema,
   SummerSopIdSchema,
   SummerSopUpdateSchema,
 } from './summersop.schema'
@@ -23,6 +24,12 @@ export const summerSopController = {
     const input = SummerSopCreateSchema.parse(req.body)
     const data = await summerSopService.create(input)
     return reply.status(201).send(success(data, 'created'))
+  },
+
+  async generateForFeishu(req: FastifyRequest, reply: FastifyReply) {
+    const input = SummerSopFeishuGenerateSchema.parse(req.body)
+    const data = summerSopService.generateForFeishu(input)
+    return reply.send(success(data, 'generated'))
   },
 
   async update(req: FastifyRequest, reply: FastifyReply) {
