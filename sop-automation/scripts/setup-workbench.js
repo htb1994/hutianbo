@@ -13,7 +13,7 @@ const TABLES = [
     fields: [
       { name: "任务名称", type: "text" },
       { name: "所属项目", type: "text" },
-      { name: "任务类型", type: "select", multiple: false, options: ["生成配套话术", "生成每日群发内容", "生成转化私聊话术", "生成数据看板", "生成转化跟进清单", "生成表彰物料说明"].map(nameOption) },
+      { name: "任务类型", type: "select", multiple: false, options: ["生成完整SOP", "生成配套话术", "生成每日群发内容", "生成转化私聊话术", "生成数据看板", "生成转化跟进清单", "生成表彰物料说明"].map(nameOption) },
       { name: "城市/学校", type: "text" },
       { name: "活动名称", type: "text" },
       { name: "年级/学段", type: "text" },

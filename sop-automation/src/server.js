@@ -232,6 +232,11 @@ async function processProject(project, materials, templates, { dryRun = false } 
 async function processTask(task, scripts, followups, dashboardRows, { dryRun = false } = {}) {
   const name = task["任务名称"] || task.recordId;
   console.log(`[sop-automation] 开始处理任务：${name}`);
+  const type = firstValue(task["任务类型"]);
+
+  if (isFullSopTask(type)) {
+    return processFullSopTask(task, { dryRun });
+  }
 
   if (dryRun) {
     const content = buildTaskDocument(task, scripts, followups, dashboardRows);
@@ -265,6 +270,71 @@ async function processTask(task, scripts, followups, dashboardRows, { dryRun = f
     });
     throw error;
   }
+}
+
+async function processFullSopTask(task, { dryRun = false } = {}) {
+  const projects = await fetchAllProjects();
+  const project = findProjectForTask(task, projects);
+
+  if (dryRun) {
+    const materials = await fetchMaterials();
+    const templates = await fetchTemplates();
+    const content = buildSopDocument(project, materials, templates);
+    console.log(`[sop-automation] dry-run 完整SOP内容长度：${content.length}`);
+    return { url: "", dryRun: true };
+  }
+
+  await updateTask(task.recordId, {
+    "生成状态": "生成中",
+    "备注": `正在按「${project["项目名称"]}」生成完整SOP：${nowText()}`
+  });
+
+  try {
+    const materials = await fetchMaterials();
+    const templates = await fetchTemplates();
+    const result = await processProject(project, materials, templates, { dryRun: false });
+
+    await updateTask(task.recordId, {
+      "生成状态": "待审核",
+      "结果链接": result.url,
+      "备注": `完整SOP已生成，来源项目：${project["项目名称"]}，等待审核：${nowText()}`
+    });
+
+    await createTaskOutputRecord(task, result.url);
+    return result;
+  } catch (error) {
+    await updateTask(task.recordId, {
+      "生成状态": "需修改",
+      "备注": `完整SOP生成失败：${String(error.message).slice(0, 500)}`
+    });
+    throw error;
+  }
+}
+
+function findProjectForTask(task, projects) {
+  const target = String(task["所属项目"] || task["任务名称"] || "").trim();
+  if (!target) {
+    const error = new Error("生成完整SOP时，需要在任务表填写「所属项目」");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const matched = projects.find((project) => {
+    const name = String(project["项目名称"] || "").trim();
+    return name === target || name.includes(target) || target.includes(name);
+  });
+
+  if (!matched) {
+    const error = new Error(`项目配置中未找到匹配项目：${target}`);
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return matched;
+}
+
+function isFullSopTask(type) {
+  return String(type || "").includes("完整SOP");
 }
 
 async function insertProjectMaterials(docId, project, materials) {
@@ -377,6 +447,7 @@ async function createTaskOutputRecord(task, url) {
 
 function outputTypeForTask(task) {
   const type = firstValue(task["任务类型"]);
+  if (type.includes("完整SOP")) return "SOP云文档";
   if (type.includes("表彰")) return "结营执行方案";
   if (type.includes("看板")) return "素材配置表";
   if (type.includes("跟进")) return "结营执行方案";
