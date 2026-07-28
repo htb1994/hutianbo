@@ -1,0 +1,27 @@
+{
+  "larkCli": "/Users/hutianbo/.npm-global/bin/lark-cli",
+  "identity": "user",
+  "pollIntervalMs": 60000,
+  "baseToken": "",
+  "tables": {
+    "projects": "",
+    "templates": "",
+    "materials": "",
+    "outputs": "",
+    "tasks": "",
+    "scripts": "",
+    "followups": "",
+    "dashboard": ""
+  },
+  "defaults": {
+    "creator": "洋葱学园社群运营SOP生成工作台",
+    "pollLimit": 100,
+    "materialDir": "/Users/hutianbo/Desktop/洋葱/SOP素材",
+    "maxMaterialFiles": 8,
+    "maxUploadBytes": 83886080
+  },
+  "webhook": {
+    "port": 8787,
+    "secret": "change-me-before-deploy"
+  }
+}

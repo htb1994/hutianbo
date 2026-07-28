@@ -1,0 +1,22 @@
+{
+  "name": "onion-sop-automation",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup:workbench": "node scripts/setup-workbench.js",
+    "seed:workbench": "node scripts/seed-workbench.js",
+    "import:sop-templates": "node scripts/import-sop-templates.js",
+    "start": "node src/server.js",
+    "webhook": "node src/webhookServer.js",
+    "render:start": "node scripts/render-start.js",
+    "once": "node src/server.js --once",
+    "dry-run": "node src/server.js --once --dry-run"
+  },
+  "dependencies": {
+    "@larksuite/cli": "1.0.60"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

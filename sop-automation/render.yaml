@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: onion-sop-automation
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm run render:start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LARK_IDENTITY
+        value: bot
+      - key: LARK_CLI_PATH
+        value: ./node_modules/.bin/lark-cli
+      - key: LARK_BRAND
+        value: feishu
+      - key: LARK_APP_ID
+        sync: false
+      - key: LARK_APP_SECRET
+        sync: false
+      - key: SOP_WEBHOOK_SECRET
+        sync: false
