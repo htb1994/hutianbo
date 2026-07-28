@@ -31,6 +31,20 @@ export function startWebhookServer(options = {}) {
 async function handleRequest(request, response) {
   const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
 
+  if (request.method === "GET" && url.pathname === "/") {
+    sendJson(response, 200, {
+      ok: true,
+      service: "onion-sop-webhook",
+      message: "洋葱学园 SOP 自动生成服务运行中",
+      endpoints: {
+        health: "GET /health",
+        generate: "POST /api/generate"
+      },
+      usage: "在飞书多维表格中将生成状态改为待生成，即可触发自动生成。"
+    });
+    return;
+  }
+
   if (request.method === "GET" && url.pathname === "/health") {
     sendJson(response, 200, {
       ok: true,
