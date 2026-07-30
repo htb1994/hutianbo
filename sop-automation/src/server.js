@@ -217,7 +217,15 @@ async function processProject(project, materials, templates, { dryRun = false } 
       "备注": `SOP已自动生成，已插入素材${materialResult.inserted}个，等待负责人审核：${nowText()}`
     });
 
-    await createOutputRecord(project, doc.url);
+    await safelyArchiveOutput({
+      action: () => createOutputRecord(project, doc.url),
+      onFailure: (error) => updateProject(project.recordId, {
+        "生成状态": "待审核",
+        "SOP云文档链接": doc.url,
+        "备注": `SOP已自动生成，已插入素材${materialResult.inserted}个；输出归档失败，不影响文档使用：${shortError(error)}`
+      }),
+      label: `项目输出归档失败：${name}`
+    });
     console.log(`[sop-automation] 已完成：${name} -> ${doc.url}`);
     return { url: doc.url };
   } catch (error) {
@@ -260,7 +268,15 @@ async function processTask(task, scripts, followups, dashboardRows, { dryRun = f
       "备注": `任务结果已生成，等待审核：${nowText()}`
     });
 
-    await createTaskOutputRecord(task, doc.url);
+    await safelyArchiveOutput({
+      action: () => createTaskOutputRecord(task, doc.url),
+      onFailure: (error) => updateTask(task.recordId, {
+        "生成状态": "待审核",
+        "结果链接": doc.url,
+        "备注": `任务结果已生成；输出归档失败，不影响文档使用：${shortError(error)}`
+      }),
+      label: `任务输出归档失败：${name}`
+    });
     console.log(`[sop-automation] 任务已完成：${name} -> ${doc.url}`);
     return { url: doc.url };
   } catch (error) {
@@ -300,7 +316,15 @@ async function processFullSopTask(task, { dryRun = false } = {}) {
       "备注": `完整SOP已生成，来源项目：${project["项目名称"]}，等待审核：${nowText()}`
     });
 
-    await createTaskOutputRecord(task, result.url);
+    await safelyArchiveOutput({
+      action: () => createTaskOutputRecord(task, result.url),
+      onFailure: (error) => updateTask(task.recordId, {
+        "生成状态": "待审核",
+        "结果链接": result.url,
+        "备注": `完整SOP已生成，来源项目：${project["项目名称"]}；任务输出归档失败，不影响文档使用：${shortError(error)}`
+      }),
+      label: `完整SOP任务输出归档失败：${task["任务名称"] || task.recordId}`
+    });
     return result;
   } catch (error) {
     await updateTask(task.recordId, {
@@ -427,6 +451,19 @@ async function createOutputRecord(project, url) {
       `由本地自动生成服务创建：${nowText()}`
     ]]
   });
+}
+
+async function safelyArchiveOutput({ action, onFailure, label }) {
+  try {
+    await action();
+  } catch (error) {
+    console.warn(`[sop-automation] ${label}`, error.message);
+    await onFailure(error);
+  }
+}
+
+function shortError(error) {
+  return String(error.message || error).replace(/\s+/g, " ").slice(0, 260);
 }
 
 async function createTaskOutputRecord(task, url) {
