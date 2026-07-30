@@ -315,6 +315,7 @@ function localizeHardCodedRegion(body, { city, district, targetRegion, school, p
   const replacements = [
     [/衡阳市成章实验中学/g, schoolText],
     [/成章实验中学/g, schoolText],
+    [/衡阳本地化/g, `${replacementRegion}本地化`],
     [/衡阳本地/g, replacementRegion],
     [/湖南衡阳/g, city ? `湖南${city}` : replacementRegion],
     [/衡阳暑假/g, `${replacementRegion}暑假`],

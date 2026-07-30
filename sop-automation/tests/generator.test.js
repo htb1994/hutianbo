@@ -24,6 +24,7 @@ test("localizes hard-coded regional wording from matched templates", () => {
       "<title>衡阳本地洋葱学园暑假加油站社群运营14天SOP</title>",
       "# 衡阳本地洋葱学园暑假加油站社群运营14天SOP",
       "衡阳本地小学、初中、高中暑假学习社群。",
+      "## 衡阳本地化表达",
       "适合衡阳市成章实验中学，蒸湘区/雁峰区/石鼓区可替换。",
       "衡阳暑假天气热，咱们班要坚持打卡。"
     ].join("\n")
@@ -34,7 +35,9 @@ test("localizes hard-coded regional wording from matched templates", () => {
   assert.match(content, /益阳赫山区初中14天开学收心营社群SOP/);
   assert.match(content, /益阳/);
   assert.match(content, /赫山区/);
+  assert.match(content, /益阳赫山区本地化表达/);
   assert.doesNotMatch(content, /衡阳/);
+  assert.doesNotMatch(content, /赫山区化表达/);
   assert.doesNotMatch(content, /蒸湘区|雁峰区|石鼓区|成章实验中学/);
 });
 
