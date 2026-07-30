@@ -153,10 +153,10 @@ function buildTemplateFirstSop(project, materials, template) {
       ["模板类型", template["模板类型"] || "未填写"],
       ["适用区域", localizeHardCodedRegion(template["适用城市/区域"] || "未填写", templateContext)],
       ["模板周期", firstValue(template["周期类型"]) || "未填写"],
-      ["模板使用说明", template["使用说明"] || "未填写"],
-      ["素材配置规则", template["素材配置规则"] || "未填写"],
-      ["鼓励师话术规则", template["鼓励师话术规则"] || "未填写"],
-      ["转化节点", template["转化节点"] || "未填写"]
+      ["模板使用说明", localizeHardCodedRegion(template["使用说明"] || "未填写", templateContext)],
+      ["素材配置规则", localizeHardCodedRegion(template["素材配置规则"] || "未填写", templateContext)],
+      ["鼓励师话术规则", localizeHardCodedRegion(template["鼓励师话术规则"] || "未填写", templateContext)],
+      ["转化节点", localizeHardCodedRegion(template["转化节点"] || "未填写", templateContext)]
     ]),
     "",
     "## 三、本项目素材匹配清单",
