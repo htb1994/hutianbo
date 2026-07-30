@@ -214,7 +214,7 @@ async function processProject(project, materials, templates, { dryRun = false } 
     await updateProject(project.recordId, {
       "生成状态": "待审核",
       "SOP云文档链接": doc.url,
-      "备注": `SOP已自动生成，已插入素材${materialResult.inserted}个，等待负责人审核：${nowText()}`
+      "备注": `SOP已自动生成，${formatMaterialResult(materialResult)}，等待负责人审核：${nowText()}`
     });
 
     await safelyArchiveOutput({
@@ -222,7 +222,7 @@ async function processProject(project, materials, templates, { dryRun = false } 
       onFailure: (error) => updateProject(project.recordId, {
         "生成状态": "待审核",
         "SOP云文档链接": doc.url,
-        "备注": `SOP已自动生成，已插入素材${materialResult.inserted}个；输出归档失败，不影响文档使用：${shortError(error)}`
+        "备注": `SOP已自动生成，${formatMaterialResult(materialResult)}；输出归档失败，不影响文档使用：${shortError(error)}`
       }),
       label: `项目输出归档失败：${name}`
     });
@@ -389,13 +389,19 @@ async function insertProjectMaterials(docId, project, materials) {
     await lark.appendDoc({ docId, content: buildMaterialFailureNote(failed) });
   }
 
-  return { inserted, failed, skipped: plan.skipped };
+  return { inserted, linked: plan.linked?.length || 0, failed, skipped: plan.skipped };
 }
 
 function buildMaterialAppendixIntro(plan) {
   const selectedList = plan.selected.length
     ? `<ul>${plan.selected.map((item) => li(`${item.fileName}：${item.caption}`)).join("")}</ul>`
-    : p("本次没有匹配到可自动插入的本地素材，请检查素材库名称或本地素材目录。");
+    : "";
+  const linkedList = plan.linked?.length
+    ? `<h2>已匹配素材链接</h2><ul>${plan.linked.map((item) => li(`${item.materialName}：${item.link}`)).join("")}</ul>`
+    : "";
+  const emptyNote = !plan.selected.length && !plan.linked?.length
+    ? p("本次没有匹配到可自动插入或可链接的素材，请检查素材库名称、产品点、素材链接或本地素材目录。")
+    : "";
   const skippedList = plan.skipped.length
     ? `<h2>未自动上传素材</h2><ul>${plan.skipped.map((item) => li(`${item.fileName}：${item.reason}`)).join("")}</ul>`
     : "";
@@ -405,11 +411,19 @@ function buildMaterialAppendixIntro(plan) {
     "<h1>九、自动匹配素材附件</h1>",
     `<callout emoji="📎" background-color="light-blue" border-color="blue">`,
     p(`素材来源目录：${plan.directory || "未配置"}`),
-    p("以下素材由本地自动生成服务根据素材库名称、产品点和运营节点匹配后插入。图片会直接展示，视频等文件会作为附件挂载。"),
+    p("以下素材由自动生成服务根据素材库名称、产品点和运营节点匹配。能访问到本地文件时会插入附件；云端无法访问本地文件时，会优先配置素材库里的飞书素材链接。"),
     `</callout>`,
+    emptyNote,
     selectedList,
+    linkedList,
     skippedList
   ].join("\n");
+}
+
+function formatMaterialResult(result) {
+  const parts = [`已插入素材${result.inserted}个`];
+  if (result.linked) parts.push(`已配置素材链接${result.linked}个`);
+  return parts.join("，");
 }
 
 function buildMaterialFailureNote(failed) {

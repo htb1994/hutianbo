@@ -22,9 +22,22 @@ export function resolveLocalMaterialFiles(materials, project, config) {
   const materialDir = config.defaults.materialDir;
   const maxFiles = config.defaults.maxMaterialFiles ?? 8;
   const maxUploadBytes = config.defaults.maxUploadBytes ?? 80 * 1024 * 1024;
+  const productPoints = listValue(project["产品重点"]);
+  const matchedMaterials = materials
+    .filter((material) => isUsable(material))
+    .filter((material) => matchesProduct(material, productPoints))
+    .slice(0, maxFiles);
 
   if (!materialDir || !fs.existsSync(materialDir)) {
-    return { selected: [], skipped: [], directory: materialDir, warning: "素材目录不存在" };
+    return {
+      selected: [],
+      linked: matchedMaterials.filter((material) => material["素材链接"]).map((material) => linkedMaterial(material)),
+      skipped: matchedMaterials
+        .filter((material) => !material["素材链接"])
+        .map((material) => ({ material: material["素材名称"], reason: "云端无法访问本地素材目录，且素材库未填写素材链接", fileName: material["素材名称"] || "未命名素材", size: 0 })),
+      directory: materialDir,
+      warning: "素材目录不存在"
+    };
   }
 
   const files = fs.readdirSync(materialDir)
@@ -42,16 +55,21 @@ export function resolveLocalMaterialFiles(materials, project, config) {
     .filter((file) => fs.statSync(file.filePath).isFile());
 
   const selected = [];
+  const linked = [];
   const skipped = [];
   const seen = new Set();
-  const productPoints = listValue(project["产品重点"]);
 
-  for (const material of materials) {
-    if (firstValue(material["状态"]) !== "可用") continue;
-    if (!matchesProduct(material, productPoints)) continue;
-
+  for (const material of matchedMaterials) {
     const file = findBestFile(material, files);
-    if (!file || seen.has(file.filePath)) continue;
+    if (!file) {
+      if (material["素材链接"]) {
+        linked.push(linkedMaterial(material));
+      } else {
+        skipped.push({ material: material["素材名称"], reason: "未在本地目录找到匹配文件，且素材库未填写素材链接", fileName: material["素材名称"] || "未命名素材", size: 0 });
+      }
+      continue;
+    }
+    if (seen.has(file.filePath)) continue;
 
     if (!isSupported(file.ext)) {
       skipped.push({ material: material["素材名称"], reason: "暂不支持的文件类型", fileName: file.name, size: file.size });
@@ -76,7 +94,20 @@ export function resolveLocalMaterialFiles(materials, project, config) {
     if (selected.length >= maxFiles) break;
   }
 
-  return { selected, skipped, directory: materialDir, warning: "" };
+  return { selected, linked, skipped, directory: materialDir, warning: "" };
+}
+
+function isUsable(material) {
+  const status = firstValue(material["状态"]);
+  return !status || status === "可用" || status === "启用";
+}
+
+function linkedMaterial(material) {
+  return {
+    materialName: material["素材名称"] || "未命名素材",
+    link: material["素材链接"],
+    caption: buildCaption(material, { ext: "" })
+  };
 }
 
 function findBestFile(material, files) {

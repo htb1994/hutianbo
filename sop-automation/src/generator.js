@@ -162,12 +162,13 @@ function buildTemplateFirstSop(project, materials, template) {
     "## 三、本项目素材匹配清单",
     "",
     relevantMaterials.length ? markdownTable([
-      ["素材名称", "类型", "适用节点", "产品点", "使用提示"],
+      ["素材名称", "类型", "适用节点", "产品点", "素材链接", "使用提示"],
       ...relevantMaterials.slice(0, 20).map((material) => [
         material["素材名称"] || "",
         firstValue(material["素材类型"]),
         listValue(material["适用节点"]).join("、"),
         listValue(material["关联产品点"]).join("、"),
+        material["素材链接"] || "",
         material["使用话术提示"] || ""
       ])
     ]) : "当前素材库暂无可匹配素材，请先在「素材库」补充素材链接。",
@@ -427,12 +428,13 @@ function materialTable(materials) {
   }
 
   return tableWithHeader(
-    ["素材名称", "类型", "适用节点", "产品点", "使用提示"],
+    ["素材名称", "类型", "适用节点", "产品点", "素材链接", "使用提示"],
     materials.slice(0, 12).map((material) => [
       material["素材名称"] || "",
       firstValue(material["素材类型"]),
       listValue(material["适用节点"]).join("、"),
       listValue(material["关联产品点"]).join("、"),
+      material["素材链接"] || "",
       material["使用话术提示"] || ""
     ])
   );
@@ -441,7 +443,8 @@ function materialTable(materials) {
 function matchMaterials(materials, productPoints) {
   const points = new Set(productPoints);
   return materials.filter((material) => {
-    const isUsable = firstValue(material["状态"]) === "可用";
+    const status = firstValue(material["状态"]);
+    const isUsable = !status || status === "可用" || status === "启用";
     const materialPoints = listValue(material["关联产品点"]);
     return isUsable && (!points.size || materialPoints.some((point) => points.has(point)));
   });
