@@ -106,6 +106,13 @@ function buildTemplateFirstSop(project, materials, template) {
   const dayCount = inferDayCount(period, startDate, endDate);
   const serviceDays = SERVICE_DAYS[period] ?? Math.max(dayCount - 2, 1);
   const relevantMaterials = matchMaterials(materials, productPoints);
+  const templateContext = {
+    city,
+    district,
+    targetRegion: [city, district].filter(Boolean).join(""),
+    school: district || [city, district].filter(Boolean).join(""),
+    projectName: project["项目名称"] || title
+  };
   const templateBody = localizeTemplateBody(template["模板正文"], {
     project,
     city,
@@ -123,7 +130,7 @@ function buildTemplateFirstSop(project, materials, template) {
   const content = [
     `# ${title}`,
     "",
-    "> 这份 SOP 按「SOP模板库」里的完整模板正文生成，保留每日节点、群内话术、私聊话术、鼓励师互动、素材位置和转化节奏。运营老师可以直接按天执行，再把文中的 xx老师、注册链接、报名链接、海报占位替换成项目实际信息。",
+    "> 这份 SOP 按「SOP模板库」里的完整模板框架生成，并根据项目配置改写城市、区县/校区、学段、周期、产品重点等表达。运营老师可以直接按天执行，再把文中的 xx老师、注册链接、报名链接、海报占位替换成项目实际信息。",
     "",
     "## 一、项目定制信息",
     "",
@@ -142,9 +149,9 @@ function buildTemplateFirstSop(project, materials, template) {
     "## 二、匹配到的模板",
     "",
     markdownTable([
-      ["模板名称", template["模板名称"] || "未命名模板"],
+      ["模板名称", localizeHardCodedRegion(template["模板名称"] || "未命名模板", templateContext)],
       ["模板类型", template["模板类型"] || "未填写"],
-      ["适用区域", template["适用城市/区域"] || "未填写"],
+      ["适用区域", localizeHardCodedRegion(template["适用城市/区域"] || "未填写", templateContext)],
       ["模板周期", firstValue(template["周期类型"]) || "未填写"],
       ["模板使用说明", template["使用说明"] || "未填写"],
       ["素材配置规则", template["素材配置规则"] || "未填写"],
@@ -175,7 +182,7 @@ function buildTemplateFirstSop(project, materials, template) {
     "",
     "---",
     "",
-    "# 五、详细执行 SOP（按模板完整保留）",
+    "# 五、详细执行 SOP（按项目本地化改写）",
     "",
     templateBody
   ].join("\n");
@@ -254,14 +261,23 @@ function includesAny(text, needles) {
 }
 
 function localizeTemplateBody(body, context) {
-  const school = context.project["区县/校区"] || context.district || "本地学校";
+  const targetRegion = [context.city, context.district].filter(Boolean).join("");
+  const school = context.project["区县/校区"] || context.district || targetRegion || "本地学校";
   const stageText = context.stages.join("、") || "对应年级";
   const productText = context.productPoints.join("、") || "洋葱学园APP";
   const dateText = context.startDate || "活动开始日";
+  const projectName = context.project["项目名称"] || `${targetRegion || context.city || "湖南"}洋葱学园暑假加油站`;
 
-  return String(body || "")
+  return localizeHardCodedRegion(String(body || ""), {
+    city: context.city,
+    district: context.district,
+    targetRegion,
+    school,
+    projectName
+  })
     .replace(/<title>[\s\S]*?<\/title>\s*/g, "")
     .replace(/#\s*2026暑假社群运营\s*副本\s*/g, "")
+    .replace(/#\s*.*?暑假加油站社群运营\s*14天\s*SOP\s*/g, `# ${projectName}\n`)
     .replaceAll("xx年级", stageText)
     .replaceAll("【xx年级", `【${stageText}`)
     .replaceAll("xx号", dateText)
@@ -270,8 +286,45 @@ function localizeTemplateBody(body, context) {
     .replaceAll("本次暑假加油站总共为期xx天", `本次暑假加油站总共为期${context.dayCount}天`)
     .replaceAll("本次暑假加油站总共xx天", `本次暑假加油站总共${context.dayCount}天`)
     .replaceAll("咱们班", `${school}`)
+    .replaceAll("本地小学、初中、高中", `${targetRegion || context.city}小学、初中、高中`)
     .replaceAll("对应年级的组合品", `${stageText}组合品`)
     .replaceAll("同步学、专项突破、学情报告、组合品", productText);
+}
+
+function localizeHardCodedRegion(body, { city, district, targetRegion, school, projectName }) {
+  const replacementRegion = targetRegion || city || district || "本地";
+  const schoolText = school || replacementRegion;
+  const replacements = [
+    [/衡阳市成章实验中学/g, schoolText],
+    [/成章实验中学/g, schoolText],
+    [/衡阳本地/g, replacementRegion],
+    [/湖南衡阳/g, city ? `湖南${city}` : replacementRegion],
+    [/衡阳暑假/g, `${replacementRegion}暑假`],
+    [/衡阳/g, city || replacementRegion],
+    [/蒸湘区\/雁峰区\/石鼓区/g, district || replacementRegion],
+    [/蒸湘区/g, district || replacementRegion],
+    [/雁峰区/g, district || replacementRegion],
+    [/石鼓区/g, district || replacementRegion],
+    [/怀化鹤城区/g, replacementRegion],
+    [/怀化市鹤城区/g, replacementRegion],
+    [/怀化/g, city || replacementRegion],
+    [/鹤城区/g, district || replacementRegion],
+    [/长沙雨花区/g, replacementRegion],
+    [/长沙/g, city || replacementRegion],
+    [/雨花区/g, district || replacementRegion],
+    [/岳阳楼区八字门小学/g, schoolText],
+    [/岳阳楼区/g, district || replacementRegion],
+    [/岳阳/g, city || replacementRegion],
+    [/株洲/g, city || replacementRegion],
+    [/芦淞区/g, district || replacementRegion]
+  ];
+
+  let localized = body;
+  for (const [pattern, value] of replacements) {
+    if (value) localized = localized.replace(pattern, value);
+  }
+
+  return localized;
 }
 
 function markdownTable(rows) {
