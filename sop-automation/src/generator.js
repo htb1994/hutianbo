@@ -26,7 +26,7 @@ function buildFallbackSopDocument(project, materials, templates = []) {
   const title = `${project["项目名称"] || "洋葱学园暑假加油站社群运营SOP"}｜自动生成版`;
   const city = firstValue(project["城市"]) || "湖南";
   const district = project["区县/校区"] || "本地";
-  const period = firstValue(project["社群周期"]) || "自定义";
+  const period = inferPeriod(project);
   const startDate = trimDate(project["开始日期"]);
   const endDate = trimDate(project["结束日期"]);
   const weekendRule = firstValue(project["周末规则"]) || "按项目安排";
@@ -96,7 +96,7 @@ function buildTemplateFirstSop(project, materials, template) {
   const title = `${project["项目名称"] || "洋葱学园暑假加油站社群运营SOP"}｜模板完整执行版`;
   const city = firstValue(project["城市"]) || "湖南";
   const district = project["区县/校区"] || "本地";
-  const period = firstValue(project["社群周期"]) || firstValue(template["周期类型"]) || "自定义";
+  const period = inferPeriod(project, template);
   const startDate = trimDate(project["开始日期"]);
   const endDate = trimDate(project["结束日期"]);
   const weekendRule = firstValue(project["周末规则"]) || "按模板执行";
@@ -222,7 +222,7 @@ function selectTemplate(project, templates) {
   if (!active.length) return null;
 
   const city = `${firstValue(project["城市"])} ${project["区县/校区"] || ""}`;
-  const period = firstValue(project["社群周期"]);
+  const period = inferPeriod(project);
   const templateType = firstValue(project["模板类型"]);
   const stages = listValue(project["学段"]);
   const productPoints = listValue(project["产品重点"]);
@@ -234,6 +234,12 @@ function selectTemplate(project, templates) {
 
 function scoreTemplate(template, project) {
   let score = 0;
+  const phases = listValue(template["运营阶段"]);
+  const templateKind = [
+    template["模板名称"],
+    template["模板类型"],
+    phases.join(" ")
+  ].join(" ");
   const haystack = [
     template["模板名称"],
     template["适用城市/区域"],
@@ -253,7 +259,19 @@ function scoreTemplate(template, project) {
   score += project.productPoints.filter((point) => haystack.includes(point)).length * 3;
 
   if (template["模板正文"]) score += 5;
+  if (phases.includes("纯服务")) score += 14;
+  if (phases.includes("服务转化")) score += 12;
+  if (project.templateType && project.templateType.includes("转化") && phases.includes("服务转化")) score += 10;
+  if (isClosingOnlyTemplate(templateKind) && !isClosingOnlyRequest(project)) score -= 60;
   return score;
+}
+
+function isClosingOnlyTemplate(text) {
+  return text.includes("结营表彰") && !text.includes("纯服务");
+}
+
+function isClosingOnlyRequest(project) {
+  return String(project.templateType || "").includes("结营表彰");
 }
 
 function includesAny(text, needles) {
@@ -436,6 +454,17 @@ function inferDayCount(period, startDate, endDate) {
   if (!start || !end) return 14;
   const diff = Math.round((end - start) / 86400000) + 1;
   return Math.min(Math.max(diff, 1), 31);
+}
+
+function inferPeriod(project, template) {
+  const explicit = firstValue(project["社群周期"]);
+  if (explicit && explicit !== "自定义") return explicit;
+
+  const name = String(project["项目名称"] || "");
+  if (name.includes("21天")) return "21天";
+  if (name.includes("14天")) return "14天";
+
+  return explicit || firstValue(template?.["周期类型"]) || "自定义";
 }
 
 function parseDate(value) {
