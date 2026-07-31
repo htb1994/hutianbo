@@ -15,15 +15,17 @@ export function buildSopDocumentPayload(project, materials, templates = []) {
   if (template?.["模板正文"]) {
     return buildTemplateFirstSop(project, materials, template);
   }
+  const activity = inferActivity(project);
   return {
     content: buildFallbackSopDocument(project, materials, templates),
     docFormat: "xml",
-    title: `${project["项目名称"] || "洋葱学园暑假加油站社群运营SOP"}｜自动生成版`
+    title: `${project["项目名称"] || `洋葱学园${activity.name}社群运营SOP`}｜自动生成版`
   };
 }
 
 function buildFallbackSopDocument(project, materials, templates = []) {
-  const title = `${project["项目名称"] || "洋葱学园暑假加油站社群运营SOP"}｜自动生成版`;
+  const activity = inferActivity(project);
+  const title = `${project["项目名称"] || `洋葱学园${activity.name}社群运营SOP`}｜自动生成版`;
   const city = firstValue(project["城市"]) || "湖南";
   const district = project["区县/校区"] || "本地";
   const period = inferPeriod(project);
@@ -43,7 +45,7 @@ function buildFallbackSopDocument(project, materials, templates = []) {
   return [
     `<title>${escapeXml(title)}</title>`,
     `<callout emoji="✅" background-color="light-green" border-color="green">`,
-    p(`本 SOP 由「洋葱学园社群运营SOP生成工作台」根据飞书项目配置自动生成，适用于${city}${district}暑假加油站社群运营。`),
+    p(`本 SOP 由「洋葱学园社群运营SOP生成工作台」根据飞书项目配置自动生成，适用于${city}${district}${activity.name}社群运营。`),
     p(`运营周期：${startDate || "未填写"} 至 ${endDate || "未填写"}；周期类型：${period}；模板类型：${templateType}。`),
     `</callout>`,
     `<h1>一、项目基本信息</h1>`,
@@ -57,7 +59,7 @@ function buildFallbackSopDocument(project, materials, templates = []) {
     ]),
     template ? templateReferenceSection(template) : [
       `<h1>二、模板库匹配结果</h1>`,
-      p("本次未匹配到启用状态的 SOP 模板，系统按默认暑假加油站结构生成。建议在「SOP模板库」补充对应城市、周期和产品重点。")
+      p(`本次未匹配到启用状态的 SOP 模板，系统按默认${activity.name}结构生成。建议在「SOP模板库」补充对应城市、周期和产品重点。`)
     ].join("\n"),
     `<h1>三、运营节奏</h1>`,
     `<ul>`,
@@ -67,7 +69,7 @@ function buildFallbackSopDocument(project, materials, templates = []) {
     li(`鼓励师表达要接地气：多用孩子真实动作、完成截图、错题变化来沟通，少用空泛口号。`),
     `</ul>`,
     `<h1>四、每日执行SOP</h1>`,
-    dailyTable(dayCount, serviceDays, weekendRule, productPoints),
+    dailyTable(dayCount, serviceDays, weekendRule, productPoints, activity),
     `<h1>五、素材配置建议</h1>`,
     materialTable(relevantMaterials),
     `<h1>六、鼓励师话术原则</h1>`,
@@ -78,10 +80,10 @@ function buildFallbackSopDocument(project, materials, templates = []) {
     li("所有私聊都要留下一句可执行动作：今晚看哪一节、明天补哪一类题、家长需要关注哪一个报告。"),
     `</ul>`,
     `<h1>七、转化期承接话术</h1>`,
-    p("家长您好，这段时间孩子在群里的学习状态我们已经帮您梳理了一下。现在最关键的不是再盲目多刷题，而是把已经暴露出来的薄弱点继续巩固。洋葱学园的同步学、专项突破、高频错题和学情报告可以把孩子后续学习路径接住，避免暑假结束后又回到没人盯、不会复盘的状态。"),
+    p(`家长您好，这段时间孩子在群里的学习状态我们已经帮您梳理了一下。现在最关键的不是再盲目多刷题，而是把已经暴露出来的薄弱点继续巩固。洋葱学园的同步学、专项突破、高频错题和学情报告可以把孩子后续学习路径接住，避免${activity.laterStage}结束后又回到没人盯、不会复盘的状态。`),
     `<h1>八、结营表彰建议</h1>`,
     needsClosing
-      ? `<ul>${li("建议设置连续打卡之星、进步突破之星、错题攻坚之星、课堂专注之星、暑假潜力之星。")}${li("结营时按 PPT截图 + 语音表彰 + 文字名单 三段式执行，最后承接后续学习规划。")}</ul>`
+      ? `<ul>${li(`建议设置连续打卡之星、进步突破之星、错题攻坚之星、课堂专注之星、${activity.name === "开学收心营" ? "开学潜力之星" : "暑假潜力之星"}。`)}${li("结营时按 PPT截图 + 语音表彰 + 文字名单 三段式执行，最后承接后续学习规划。")}</ul>`
       : p("本项目未勾选结营表彰，如后续需要，可在项目配置中开启后重新生成。"),
     `<h1>九、负责人检查项</h1>`,
     `<checkbox done="false">每日群内任务是否按时间发出。</checkbox>`,
@@ -93,7 +95,8 @@ function buildFallbackSopDocument(project, materials, templates = []) {
 }
 
 function buildTemplateFirstSop(project, materials, template) {
-  const title = `${project["项目名称"] || "洋葱学园暑假加油站社群运营SOP"}｜模板完整执行版`;
+  const activity = inferActivity(project);
+  const title = `${project["项目名称"] || `洋葱学园${activity.name}社群运营SOP`}｜模板完整执行版`;
   const city = firstValue(project["城市"]) || "湖南";
   const district = project["区县/校区"] || "本地";
   const period = inferPeriod(project, template);
@@ -111,7 +114,8 @@ function buildTemplateFirstSop(project, materials, template) {
     district,
     targetRegion: [city, district].filter(Boolean).join(""),
     school: district || [city, district].filter(Boolean).join(""),
-    projectName: project["项目名称"] || title
+    projectName: project["项目名称"] || title,
+    activity
   };
   const templateBody = localizeTemplateBody(template["模板正文"], {
     project,
@@ -149,14 +153,14 @@ function buildTemplateFirstSop(project, materials, template) {
     "## 二、匹配到的模板",
     "",
     markdownTable([
-      ["模板名称", localizeHardCodedRegion(template["模板名称"] || "未命名模板", templateContext)],
-      ["模板类型", template["模板类型"] || "未填写"],
-      ["适用区域", localizeHardCodedRegion(template["适用城市/区域"] || "未填写", templateContext)],
+      ["模板名称", localizeTemplateWording(template["模板名称"] || "未命名模板", templateContext)],
+      ["模板类型", localizeTemplateWording(template["模板类型"] || "未填写", templateContext)],
+      ["适用区域", localizeTemplateWording(template["适用城市/区域"] || "未填写", templateContext)],
       ["模板周期", firstValue(template["周期类型"]) || "未填写"],
-      ["模板使用说明", localizeHardCodedRegion(template["使用说明"] || "未填写", templateContext)],
-      ["素材配置规则", localizeHardCodedRegion(template["素材配置规则"] || "未填写", templateContext)],
-      ["鼓励师话术规则", localizeHardCodedRegion(template["鼓励师话术规则"] || "未填写", templateContext)],
-      ["转化节点", localizeHardCodedRegion(template["转化节点"] || "未填写", templateContext)]
+      ["模板使用说明", localizeTemplateWording(template["使用说明"] || "未填写", templateContext)],
+      ["素材配置规则", localizeTemplateWording(template["素材配置规则"] || "未填写", templateContext)],
+      ["鼓励师话术规则", localizeTemplateWording(template["鼓励师话术规则"] || "未填写", templateContext)],
+      ["转化节点", localizeTemplateWording(template["转化节点"] || "未填写", templateContext)]
     ]),
     "",
     "## 三、本项目素材匹配清单",
@@ -285,29 +289,87 @@ function localizeTemplateBody(body, context) {
   const stageText = context.stages.join("、") || "对应年级";
   const productText = context.productPoints.join("、") || "洋葱学园APP";
   const dateText = context.startDate || "活动开始日";
-  const projectName = context.project["项目名称"] || `${targetRegion || context.city || "湖南"}洋葱学园暑假加油站`;
+  const activity = inferActivity(context.project);
+  const projectName = context.project["项目名称"] || `${targetRegion || context.city || "湖南"}洋葱学园${activity.name}`;
 
-  return localizeHardCodedRegion(String(body || ""), {
+  return localizeTemplateWording(String(body || ""), {
     city: context.city,
     district: context.district,
     targetRegion,
     school,
-    projectName
+    projectName,
+    activity
   })
     .replace(/<title>[\s\S]*?<\/title>\s*/g, "")
     .replace(/#\s*2026暑假社群运营\s*副本\s*/g, "")
-    .replace(/#\s*.*?暑假加油站社群运营\s*14天\s*SOP\s*/g, `# ${projectName}\n`)
+    .replace(/#\s*.*?开学收心营社群运营\s*14天\s*SOP\s*/g, `# ${projectName}\n`)
     .replaceAll("xx年级", stageText)
     .replaceAll("【xx年级", `【${stageText}`)
     .replaceAll("xx号", dateText)
     .replaceAll("总共xx天", `总共${context.dayCount}天`)
-    .replaceAll("xx天暑假作业", `${context.dayCount}天暑假作业`)
-    .replaceAll("本次暑假加油站总共为期xx天", `本次暑假加油站总共为期${context.dayCount}天`)
-    .replaceAll("本次暑假加油站总共xx天", `本次暑假加油站总共${context.dayCount}天`)
+    .replaceAll("xx天开学收心学习", `${context.dayCount}天开学收心学习`)
+    .replaceAll(`本次${activity.name}总共为期xx天`, `本次${activity.name}总共为期${context.dayCount}天`)
+    .replaceAll(`本次${activity.name}总共xx天`, `本次${activity.name}总共${context.dayCount}天`)
     .replaceAll("咱们班", `${school}`)
     .replaceAll("本地小学、初中、高中", `${targetRegion || context.city}小学、初中、高中`)
     .replaceAll("对应年级的组合品", `${stageText}组合品`)
     .replaceAll("同步学、专项突破、学情报告、组合品", productText);
+}
+
+function inferActivity(project) {
+  const text = [
+    project?.["项目名称"],
+    firstValue(project?.["模板类型"]),
+    listValue(project?.["产品重点"]).join(" ")
+  ].join(" ");
+
+  if (text.includes("开学收心营") || text.includes("收心营")) {
+    return {
+      name: "开学收心营",
+      learning: "开学收心学习",
+      checkin: "开学收心学习打卡",
+      rhythm: "开学收心学习节奏",
+      conversion: "开学季转化",
+      laterStage: "开学前后关键阶段"
+    };
+  }
+
+  return {
+    name: "暑假加油站",
+    learning: "暑假学习",
+    checkin: "暑假作业打卡",
+    rhythm: "暑假学习节奏",
+    conversion: "暑促转化",
+    laterStage: "暑假后半段"
+  };
+}
+
+function localizeTemplateWording(body, context) {
+  return localizeActivityWording(localizeHardCodedRegion(String(body ?? ""), context), context.activity);
+}
+
+function localizeActivityWording(body, activity = inferActivity({})) {
+  if (activity.name === "暑假加油站") return body;
+  const replacements = [
+    [/洋葱暑假加油站/g, `洋葱${activity.name}`],
+    [/洋葱学园暑假加油站/g, `洋葱学园${activity.name}`],
+    [/暑假加油站/g, activity.name],
+    [/暑假作业打卡/g, activity.checkin],
+    [/暑假学习节奏/g, activity.rhythm],
+    [/暑假学习反馈/g, `${activity.learning}反馈`],
+    [/暑假学习/g, activity.learning],
+    [/暑假节奏/g, activity.rhythm],
+    [/暑假训练营/g, activity.name],
+    [/暑假后半段/g, activity.laterStage],
+    [/暑促转化/g, activity.conversion],
+    [/暑促/g, "开学季"]
+  ];
+
+  let localized = body;
+  for (const [pattern, value] of replacements) {
+    localized = localized.replace(pattern, value);
+  }
+  return localized;
 }
 
 function localizeHardCodedRegion(body, { city, district, targetRegion, school, projectName }) {
@@ -366,11 +428,11 @@ function markdownCell(value) {
     .trim();
 }
 
-function dailyTable(dayCount, serviceDays, weekendRule, productPoints) {
+function dailyTable(dayCount, serviceDays, weekendRule, productPoints, activity = inferActivity({})) {
   const rows = [];
   for (let day = 1; day <= dayCount; day += 1) {
     const isConversion = day > serviceDays;
-    const topic = isConversion ? conversionTopic(day - serviceDays, productPoints) : serviceTopic(day, productPoints);
+    const topic = isConversion ? conversionTopic(day - serviceDays, productPoints, activity) : serviceTopic(day, productPoints);
     rows.push([
       `Day ${day}`,
       isConversion ? "转化承接" : "纯服务运营",
@@ -404,7 +466,7 @@ function serviceTopic(day, productPoints) {
   };
 }
 
-function conversionTopic(offset, productPoints) {
+function conversionTopic(offset, productPoints, activity = inferActivity({})) {
   const product = productPoints.join("、") || "同步学、专项突破、学情报告、组合品";
   if (offset === 1) {
     return {
@@ -416,7 +478,7 @@ function conversionTopic(offset, productPoints) {
   }
   return {
     goal: "组合品转化承接",
-    groupAction: `讲清楚${product}如何承接暑假后的持续学习。`,
+    groupAction: `讲清楚${product}如何承接${activity.laterStage}后的持续学习。`,
     privateAction: "对高意向家长发送组合品购买建议和适配理由。",
     material: "组合品权益图、试卷库/错题/学情报告功能素材"
   };
