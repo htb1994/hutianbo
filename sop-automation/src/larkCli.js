@@ -78,6 +78,20 @@ export function createLarkClient(config) {
       "--content", content,
       "--format", "json"
     ]),
+    updateDocPublicPermission: ({ docId, linkShareEntity = "tenant_editable" }) => run([
+      "drive", "permission.public", "patch",
+      "--as", identity,
+      "--token", docId,
+      "--type", "docx",
+      "--data", JSON.stringify({
+        link_share_entity: linkShareEntity,
+        share_entity: "same_tenant",
+        comment_entity: "anyone_can_edit",
+        security_entity: "anyone_can_edit"
+      }),
+      "--yes",
+      "--format", "json"
+    ]),
     insertMedia: ({ docId, filePath, type, caption }) => {
       const dir = path.dirname(filePath);
       const file = `./${path.basename(filePath)}`;

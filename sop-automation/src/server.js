@@ -209,12 +209,13 @@ async function processProject(project, materials, templates, { dryRun = false } 
     const payload = buildSopDocumentPayload(project, materials, templates);
     const created = await lark.createDoc(payload);
     const doc = created.data.document;
+    const permissionResult = await configureDocPermissions(doc.document_id);
     const materialResult = await insertProjectMaterials(doc.document_id, project, materials);
 
     await updateProject(project.recordId, {
       "生成状态": "待审核",
       "SOP云文档链接": doc.url,
-      "备注": `SOP已自动生成，${formatMaterialResult(materialResult)}，等待负责人审核：${nowText()}`
+      "备注": `SOP已自动生成，${formatPermissionResult(permissionResult)}，${formatMaterialResult(materialResult)}，等待负责人审核：${nowText()}`
     });
 
     await safelyArchiveOutput({
@@ -222,7 +223,7 @@ async function processProject(project, materials, templates, { dryRun = false } 
       onFailure: (error) => updateProject(project.recordId, {
         "生成状态": "待审核",
         "SOP云文档链接": doc.url,
-        "备注": `SOP已自动生成，${formatMaterialResult(materialResult)}；输出归档失败，不影响文档使用：${shortError(error)}`
+        "备注": `SOP已自动生成，${formatPermissionResult(permissionResult)}，${formatMaterialResult(materialResult)}；输出归档失败，不影响文档使用：${shortError(error)}`
       }),
       label: `项目输出归档失败：${name}`
     });
@@ -261,11 +262,12 @@ async function processTask(task, scripts, followups, dashboardRows, { dryRun = f
     const content = buildTaskDocument(task, scripts, followups, dashboardRows);
     const created = await lark.createDoc({ content });
     const doc = created.data.document;
+    const permissionResult = await configureDocPermissions(doc.document_id);
 
     await updateTask(task.recordId, {
       "生成状态": "待审核",
       "结果链接": doc.url,
-      "备注": `任务结果已生成，等待审核：${nowText()}`
+      "备注": `任务结果已生成，${formatPermissionResult(permissionResult)}，等待审核：${nowText()}`
     });
 
     await safelyArchiveOutput({
@@ -273,7 +275,7 @@ async function processTask(task, scripts, followups, dashboardRows, { dryRun = f
       onFailure: (error) => updateTask(task.recordId, {
         "生成状态": "待审核",
         "结果链接": doc.url,
-        "备注": `任务结果已生成；输出归档失败，不影响文档使用：${shortError(error)}`
+        "备注": `任务结果已生成，${formatPermissionResult(permissionResult)}；输出归档失败，不影响文档使用：${shortError(error)}`
       }),
       label: `任务输出归档失败：${name}`
     });
@@ -392,6 +394,22 @@ async function insertProjectMaterials(docId, project, materials) {
   return { inserted, linked: plan.linked?.length || 0, failed, skipped: plan.skipped };
 }
 
+async function configureDocPermissions(docId) {
+  const linkShareEntity = config.defaults?.docLinkShareEntity || "tenant_editable";
+  if (linkShareEntity === "skip") {
+    return { skipped: true };
+  }
+
+  try {
+    await lark.updateDocPublicPermission({ docId, linkShareEntity });
+    console.log(`[sop-automation] 已设置文档链接权限：${docId} -> ${linkShareEntity}`);
+    return { ok: true, linkShareEntity };
+  } catch (error) {
+    console.warn(`[sop-automation] 文档权限设置失败：${docId}`, error.message);
+    return { ok: false, linkShareEntity, error };
+  }
+}
+
 function buildMaterialAppendixIntro(plan) {
   const selectedList = plan.selected.length
     ? `<ul>${plan.selected.map((item) => li(`${item.fileName}：${item.caption}`)).join("")}</ul>`
@@ -424,6 +442,16 @@ function formatMaterialResult(result) {
   const parts = [`已插入素材${result.inserted}个`];
   if (result.linked) parts.push(`已配置素材链接${result.linked}个`);
   return parts.join("，");
+}
+
+function formatPermissionResult(result) {
+  if (result?.skipped) return "未自动调整文档权限";
+  if (result?.ok) {
+    return result.linkShareEntity === "tenant_editable"
+      ? "文档权限已设为组织内链接可编辑"
+      : `文档权限已设置为${result.linkShareEntity}`;
+  }
+  return `文档权限自动设置失败：${shortError(result?.error || "未知错误")}`;
 }
 
 function buildMaterialFailureNote(failed) {

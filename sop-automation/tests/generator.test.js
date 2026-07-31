@@ -132,3 +132,46 @@ test("localizes activity wording for school-start focus camp", () => {
   assert.match(content, /开学前后关键阶段学习规划/);
   assert.doesNotMatch(content, /暑假加油站|暑假作业打卡|暑促|暑假后半段/);
 });
+
+test("removes summer-only and non-target stage wording for school-start middle school SOP", () => {
+  const project = {
+    "项目名称": "益阳赫山区初中14天开学收心营社群SOP",
+    "城市": ["益阳"],
+    "区县/校区": "赫山区",
+    "学段": ["初中"],
+    "社群周期": ["14天"],
+    "模板类型": ["转化加强版"],
+    "产品重点": ["同步学"],
+    "生成状态": "待生成"
+  };
+  const template = {
+    "模板名称": "衡阳本地14天洋葱学园暑假加油站SOP",
+    "状态": ["启用"],
+    "周期类型": ["14天"],
+    "模板类型": "本地化暑假加油站SOP",
+    "运营阶段": ["纯服务", "服务转化"],
+    "适用城市/区域": "湖南衡阳",
+    "适用学段": ["初中"],
+    "模板正文": [
+      "## 适用对象",
+      "衡阳本地小学、初中、高中暑假学习社群。",
+      "## 衡阳本地化表达",
+      "衡阳暑假天气热，孩子在家容易散。",
+      "# 2026暑假社群运营数据统计表",
+      "小学重点讲习惯和兴趣，初中重点讲漏洞和错题，高中重点讲规划和效率。",
+      "小学孩子看兴趣和习惯，初中孩子看知识点是否听懂，高中孩子看能否跟上节奏。",
+      "错题复盘三步。暑假能把错题看清楚，就是在补漏洞。",
+      "## Day8（固定学习时间：让暑假不散）",
+      "后半段暑假是否还需要继续有人带。"
+    ].join("\n")
+  };
+
+  const content = buildSopDocument(project, [], [template]);
+
+  assert.match(content, /益阳赫山区初中开学收心学习社群/);
+  assert.match(content, /2026开学季社群运营数据统计表/);
+  assert.match(content, /初中重点讲知识漏洞、错题复盘和开学衔接/);
+  assert.match(content, /初中孩子重点看知识点是否听懂/);
+  assert.match(content, /让开学收心不散/);
+  assert.doesNotMatch(content, /暑假|小学、初中、高中|小学重点|高中重点|小学孩子|高中孩子|后半段/);
+});

@@ -16,11 +16,13 @@ export function loadConfig() {
 
   const merged = {
     pollIntervalMs: 60000,
+    ...config,
     defaults: {
       creator: "洋葱学园社群运营SOP生成工作台",
-      pollLimit: 100
+      pollLimit: 100,
+      ...(config.defaults || {}),
+      docLinkShareEntity: process.env.SOP_DOC_LINK_SHARE_ENTITY || config.defaults?.docLinkShareEntity || "tenant_editable"
     },
-    ...config,
     baseToken: process.env.FEISHU_BASE_TOKEN || process.env.SOP_BASE_TOKEN || config.baseToken,
     tables: {
       ...config.tables,
