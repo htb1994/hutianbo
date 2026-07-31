@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { DEFAULT_DOC_LINK_SHARE_ENTITY } from "./generationRules.js";
 
 export function loadConfig() {
   const configPath = path.resolve(process.cwd(), "config.json");
@@ -21,7 +22,7 @@ export function loadConfig() {
       creator: "洋葱学园社群运营SOP生成工作台",
       pollLimit: 100,
       ...(config.defaults || {}),
-      docLinkShareEntity: process.env.SOP_DOC_LINK_SHARE_ENTITY || config.defaults?.docLinkShareEntity || "tenant_editable"
+      docLinkShareEntity: process.env.SOP_DOC_LINK_SHARE_ENTITY || config.defaults?.docLinkShareEntity || DEFAULT_DOC_LINK_SHARE_ENTITY
     },
     baseToken: process.env.FEISHU_BASE_TOKEN || process.env.SOP_BASE_TOKEN || config.baseToken,
     tables: {
