@@ -242,3 +242,110 @@ test("cleans stage examples and duplicated advanced-course wording", () => {
   assert.match(content, /开学前后节奏容易乱/);
   assert.doesNotMatch(content, /初一-小宇|适合的才加难度，不适合的先补基础。适合的才加难度|开学前后白天热/);
 });
+
+test("derives end date from start date and fixed period when end date is blank", () => {
+  const project = {
+    "项目名称": "衡阳初中14天暑假加油站SOP",
+    "城市": ["衡阳"],
+    "区县/校区": "蒸湘区",
+    "学段": ["初中"],
+    "社群周期": ["14天"],
+    "开始日期": "2026-07-06 00:00:00",
+    "结束日期": "",
+    "模板类型": ["服务转化版"],
+    "产品重点": ["同步学"]
+  };
+
+  const content = buildSopDocument(project, [], []);
+
+  assert.match(content, /运营周期：2026-07-06 至 2026-07-19/);
+  assert.doesNotMatch(content, /2026-07-06 至 未填写/);
+});
+
+test("uses custom operation day count to derive period and end date", () => {
+  const project = {
+    "项目名称": "怀化鹤城区暑假加油站SOP",
+    "城市": ["怀化"],
+    "区县/校区": "鹤城区",
+    "学段": ["初中"],
+    "社群周期": ["自定义"],
+    "运营天数": 19,
+    "开始日期": "2026-07-06 00:00:00",
+    "模板类型": ["服务转化版"],
+    "产品重点": ["同步学"]
+  };
+
+  const content = buildSopDocument(project, [], []);
+
+  assert.match(content, /运营周期：2026-07-06 至 2026-07-24/);
+  assert.match(content, /前17天以纯服务为主/);
+  assert.match(content, /Day 19/);
+});
+
+test("closing checkbox does not select closing-only template for full SOP", () => {
+  const project = {
+    "项目名称": "衡阳初中14天暑假加油站SOP",
+    "城市": ["衡阳"],
+    "区县/校区": "蒸湘区",
+    "学段": ["初中"],
+    "社群周期": ["14天"],
+    "模板类型": ["服务转化版"],
+    "是否需要结营表彰": true,
+    "产品重点": ["同步学"]
+  };
+  const fullTemplate = {
+    "模板名称": "衡阳本地14天洋葱学园暑假加油站SOP-参考框架版",
+    "状态": ["启用"],
+    "周期类型": ["14天"],
+    "模板类型": "服务转化版",
+    "运营阶段": ["纯服务", "服务转化"],
+    "适用城市/区域": "湖南衡阳",
+    "适用学段": ["初中"],
+    "模板正文": "## Day1（纯服务）\n开营。\n## Day13（转化期）\n承接。"
+  };
+  const closingOnlyTemplate = {
+    "模板名称": "衡阳14天结营表彰执行SOP",
+    "状态": ["启用"],
+    "周期类型": ["14天"],
+    "模板类型": "结营表彰执行SOP",
+    "运营阶段": ["结营表彰"],
+    "适用城市/区域": "湖南衡阳",
+    "适用学段": ["初中"],
+    "模板正文": "## 群内结营表彰详细执行流程\n只做表彰。"
+  };
+
+  const content = buildSopDocument(project, [], [closingOnlyTemplate, fullTemplate]);
+
+  assert.match(content, /Day1（纯服务）/);
+  assert.match(content, /Day13（转化期）/);
+  assert.doesNotMatch(content, /只做表彰/);
+});
+
+test("appends closing ceremony module to template-first full SOP when enabled", () => {
+  const project = {
+    "项目名称": "衡阳初中14天暑假加油站SOP",
+    "城市": ["衡阳"],
+    "区县/校区": "蒸湘区",
+    "学段": ["初中"],
+    "社群周期": ["14天"],
+    "模板类型": ["服务转化版"],
+    "是否需要结营表彰": true,
+    "产品重点": ["同步学"]
+  };
+  const template = {
+    "模板名称": "衡阳本地14天洋葱学园暑假加油站SOP-参考框架版",
+    "状态": ["启用"],
+    "周期类型": ["14天"],
+    "模板类型": "服务转化版",
+    "运营阶段": ["纯服务", "服务转化"],
+    "适用城市/区域": "湖南衡阳",
+    "适用学段": ["初中"],
+    "模板正文": "## Day1（纯服务）\n开营。\n## Day14（结营）\n总结。"
+  };
+
+  const content = buildSopDocument(project, [], [template]);
+
+  assert.match(content, /## 六、结营表彰附加执行模块/);
+  assert.match(content, /连续打卡之星、进步突破之星、错题攻坚之星、课堂专注之星、暑假潜力之星/);
+  assert.match(content, /先发结营开场文字，再发奖项海报/);
+});

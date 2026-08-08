@@ -31,14 +31,14 @@ function buildFallbackSopDocument(project, materials, templates = []) {
   const district = project["区县/校区"] || "本地";
   const period = inferPeriod(project);
   const startDate = trimDate(project["开始日期"]);
-  const endDate = trimDate(project["结束日期"]);
   const weekendRule = firstValue(project["周末规则"]) || "按项目安排";
   const templateType = firstValue(project["模板类型"]) || "服务转化版";
   const stages = listValue(project["学段"]);
   const productPoints = listValue(project["产品重点"]);
   const needsClosing = Boolean(project["是否需要结营表彰"]);
 
-  const dayCount = inferDayCount(period, startDate, endDate);
+  const dayCount = inferDayCount(project, period, startDate);
+  const endDate = inferEndDate(project, startDate, dayCount);
   const serviceDays = SERVICE_DAYS[period] ?? Math.max(dayCount - 2, 1);
   const relevantMaterials = matchMaterials(materials, productPoints);
   const template = selectTemplate(project, templates);
@@ -102,12 +102,12 @@ function buildTemplateFirstSop(project, materials, template) {
   const district = project["区县/校区"] || "本地";
   const period = inferPeriod(project, template);
   const startDate = trimDate(project["开始日期"]);
-  const endDate = trimDate(project["结束日期"]);
   const weekendRule = firstValue(project["周末规则"]) || "按模板执行";
   const stages = listValue(project["学段"]);
   const productPoints = listValue(project["产品重点"]);
   const needsClosing = Boolean(project["是否需要结营表彰"]);
-  const dayCount = inferDayCount(period, startDate, endDate);
+  const dayCount = inferDayCount(project, period, startDate);
+  const endDate = inferEndDate(project, startDate, dayCount);
   const serviceDays = SERVICE_DAYS[period] ?? Math.max(dayCount - 2, 1);
   const relevantMaterials = matchMaterials(materials, productPoints);
   const templateContext = {
@@ -191,7 +191,10 @@ function buildTemplateFirstSop(project, materials, template) {
     "",
     "# 五、详细执行 SOP（按项目本地化改写）",
     "",
-    templateBody
+    templateBody,
+    needsClosing && !hasClosingCeremonyModule(templateBody)
+      ? closingCeremonyMarkdownAppendix(project, activity)
+      : ""
   ].join("\n");
 
   return {
@@ -444,6 +447,33 @@ function conversionTopic(offset, productPoints, activity = inferActivity({})) {
   };
 }
 
+function closingCeremonyMarkdownAppendix(project, activity = inferActivity(project)) {
+  return [
+    "",
+    "## 六、结营表彰附加执行模块",
+    "",
+    "> 勾选「是否需要结营表彰」后自动追加。该模块只作为完整 SOP 的收尾动作，不替代前面的每日社群运营动作。",
+    "",
+    "### 1. 奖项设置",
+    "",
+    `建议奖项：连续打卡之星、进步突破之星、错题攻坚之星、课堂专注之星、${activity.potentialAward}。`,
+    "",
+    "### 2. 群内执行顺序",
+    "",
+    "- 先发结营开场文字，再发奖项海报，最后发鼓励师语音或文字表扬。",
+    "- 每个奖项对应一段具体表扬话术，重点说孩子完成了什么、进步在哪里。",
+    "- 表彰结束后再承接后续学习规划，避免第一句话就直接转化。",
+    "",
+    "### 3. 转化承接",
+    "",
+    `结营后先复盘孩子在${activity.name}里的学习数据，再结合同步学、专项突破、高频错题和学情报告，给出后续组合品建议。`
+  ].join("\n");
+}
+
+function hasClosingCeremonyModule(body) {
+  return /结营表彰(?:附加执行模块|详细执行流程|执行方案)/.test(String(body || ""));
+}
+
 function materialTable(materials) {
   if (!materials.length) {
     return p("当前素材库暂无可匹配素材，请先在「素材库」补充素材链接。");
@@ -472,14 +502,26 @@ function matchMaterials(materials, productPoints) {
   });
 }
 
-function inferDayCount(period, startDate, endDate) {
+function inferDayCount(project, period, startDate) {
   if (period === "14天") return 14;
   if (period === "21天") return 21;
+  const explicitDays = numberValue(project["运营天数"]);
+  if (explicitDays) return explicitDays;
   const start = parseDate(startDate);
+  const endDate = trimDate(project["结束日期"]);
   const end = parseDate(endDate);
   if (!start || !end) return 14;
   const diff = Math.round((end - start) / 86400000) + 1;
   return Math.min(Math.max(diff, 1), 31);
+}
+
+function inferEndDate(project, startDate, dayCount) {
+  const explicitEndDate = trimDate(project["结束日期"]);
+  if (explicitEndDate) return explicitEndDate;
+  const start = parseDate(startDate);
+  if (!start || !dayCount) return "";
+  const end = new Date(start.getTime() + (dayCount - 1) * 86400000);
+  return formatDate(end);
 }
 
 function inferPeriod(project, template) {
@@ -502,6 +544,17 @@ function parseDate(value) {
 
 function trimDate(value) {
   return value ? String(value).slice(0, 10) : "";
+}
+
+function formatDate(date) {
+  return date.toLocaleDateString("sv-SE", { timeZone: "Asia/Shanghai" });
+}
+
+function numberValue(value) {
+  const raw = firstValue(value);
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.min(Math.max(Math.round(parsed), 1), 31);
 }
 
 function table(rows) {
