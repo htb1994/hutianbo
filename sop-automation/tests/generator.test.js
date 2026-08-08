@@ -175,3 +175,37 @@ test("removes summer-only and non-target stage wording for school-start middle s
   assert.match(content, /让开学收心不散/);
   assert.doesNotMatch(content, /暑假|小学、初中、高中|小学重点|高中重点|小学孩子|高中孩子|后半段/);
 });
+
+test("moves post-camp followup outside numbered camp days", () => {
+  const project = {
+    "项目名称": "益阳赫山区初中14天开学收心营社群SOP",
+    "城市": ["益阳"],
+    "区县/校区": "赫山区",
+    "学段": ["初中"],
+    "社群周期": ["14天"],
+    "模板类型": ["转化加强版"],
+    "产品重点": ["同步学"],
+    "生成状态": "待生成"
+  };
+  const template = {
+    "模板名称": "衡阳本地14天洋葱学园暑假加油站SOP",
+    "状态": ["启用"],
+    "周期类型": ["14天"],
+    "模板类型": "本地化暑假加油站SOP",
+    "运营阶段": ["纯服务", "服务转化"],
+    "适用城市/区域": "湖南衡阳",
+    "适用学段": ["初中"],
+    "模板正文": [
+      "# 衡阳本地洋葱学园暑假加油站社群运营14天SOP",
+      "## Day14（结营表彰）",
+      "做总结。",
+      "## Day15（T+1追单期）",
+      "继续跟进。"
+    ].join("\n")
+  };
+
+  const content = buildSopDocument(project, [], [template]);
+
+  assert.match(content, /## 结营后追单期（T\+1追单期）/);
+  assert.doesNotMatch(content, /Day15/);
+});

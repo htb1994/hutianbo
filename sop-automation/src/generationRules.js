@@ -5,6 +5,9 @@ export const DEFAULT_DOC_LINK_SHARE_ENTITY = "tenant_editable";
 export function inferActivity(project) {
   const text = [
     project?.["项目名称"],
+    project?.["任务名称"],
+    project?.["所属项目"],
+    project?.["活动名称"],
     firstValue(project?.["模板类型"]),
     listValue(project?.["产品重点"]).join(" ")
   ].join(" ");
@@ -38,6 +41,7 @@ export function inferActivity(project) {
         [/让暑假不散/g, "让开学收心不散"],
         [/暑促转化/g, "开学季转化"],
         [/暑促/g, "开学季"],
+        [/暑假潜力之星/g, "开学潜力之星"],
         [/暑假/g, "开学前后"]
       ]
     };
@@ -62,6 +66,24 @@ export function applyActivityRules(body, activity) {
     localized = localized.replace(pattern, value);
   }
   return localized;
+}
+
+export function applyGenerationRules(body, { record, stageText, targetRegion, city, dayCount } = {}) {
+  const activity = inferActivity(record || {});
+  const activityLocalized = applyActivityRules(body, activity);
+  const stageLocalized = applyStageRules(activityLocalized, { stageText, targetRegion, city });
+  return applyTimelineRules(stageLocalized, { dayCount });
+}
+
+export function applyTimelineRules(body, { dayCount } = {}) {
+  const maxDay = Number(dayCount) || 0;
+  return String(body ?? "").replace(
+    /(^|\n)(#{1,6}\s*)Day\s*(\d+)\s*[（(]([^）)]*(?:T\+\d+|追单)[^）)]*)[）)]/g,
+    (match, prefix, hashes, day, label) => {
+      if (!maxDay || Number(day) <= maxDay) return match;
+      return `${prefix}${hashes}结营后追单期（${label}）`;
+    }
+  );
 }
 
 export function applyStageRules(body, { stageText, targetRegion, city }) {

@@ -1,6 +1,6 @@
 import { escapeXml, li, p } from "./xml.js";
 import { firstValue, listValue } from "./records.js";
-import { applyActivityRules, applyStageRules, inferActivity } from "./generationRules.js";
+import { applyGenerationRules, inferActivity } from "./generationRules.js";
 
 const SERVICE_DAYS = {
   "14天": 12,
@@ -301,7 +301,9 @@ function localizeTemplateBody(body, context) {
     school,
     projectName,
     activity,
-    stageText
+    stageText,
+    project: context.project,
+    dayCount: context.dayCount
   })
     .replace(/<title>[\s\S]*?<\/title>\s*/g, "")
     .replace(/#\s*2026暑假社群运营\s*副本\s*/g, "")
@@ -321,11 +323,12 @@ function localizeTemplateBody(body, context) {
 function localizeTemplateWording(body, context) {
   const stageText = context.stageText || "对应年级";
   const regionLocalized = localizeHardCodedRegion(String(body ?? ""), context);
-  const activityLocalized = applyActivityRules(regionLocalized, context.activity || inferActivity({}));
-  return applyStageRules(activityLocalized, {
+  return applyGenerationRules(regionLocalized, {
+    record: context.project || { "项目名称": context.projectName },
     stageText,
     targetRegion: context.targetRegion,
-    city: context.city
+    city: context.city,
+    dayCount: context.dayCount
   });
 }
 

@@ -53,14 +53,16 @@ export function createLarkClient(config) {
       "--as", identity,
       "--base-token", config.baseToken,
       "--table-id", tableId,
-      "--json", JSON.stringify({ record_id_list: [recordId], patch })
+      "--json", JSON.stringify({ update_records: { [recordId]: patch } })
     ]),
     createRecord: ({ tableId, fields, rows }) => run([
       "base", "+record-batch-create",
       "--as", identity,
       "--base-token", config.baseToken,
       "--table-id", tableId,
-      "--json", JSON.stringify({ fields, rows })
+      "--json", JSON.stringify({
+        create_records: rows.map((row) => Object.fromEntries(fields.map((field, index) => [field, row[index]])))
+      })
     ]),
     createDoc: ({ content, docFormat = "xml", title }) => run([
       "docs", "+create",

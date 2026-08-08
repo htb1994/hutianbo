@@ -1,5 +1,6 @@
 import { escapeXml, li, p } from "./xml.js";
 import { firstValue, listValue } from "./records.js";
+import { applyGenerationRules, inferActivity } from "./generationRules.js";
 
 const BUILTIN_SCRIPTS = [
   {
@@ -51,7 +52,7 @@ export function buildTaskDocument(task, scripts = [], followups = [], dashboardR
 
 export function buildScriptPack(task, scripts = []) {
   const title = `${taskTitle(task)}｜配套话术`;
-  const matched = mergeScripts(scripts);
+  const matched = mergeScripts(scripts, task);
   return [
     `<title>${escapeXml(title)}</title>`,
     taskHeader(task, "这份话术包用于开营、日常打卡、课程价值传递、结营表彰和转化私聊。"),
@@ -69,7 +70,7 @@ export function buildScriptPack(task, scripts = []) {
 }
 
 export function buildDailyGroupContent(task, scripts = []) {
-  const matched = mergeScripts(scripts);
+  const matched = mergeScripts(scripts, task);
   const days = inferDays(task);
   const rows = [];
   for (let day = 1; day <= days; day += 1) {
@@ -88,7 +89,7 @@ export function buildDailyGroupContent(task, scripts = []) {
 }
 
 export function buildConversionScripts(task, scripts = [], followups = []) {
-  const matched = mergeScripts(scripts);
+  const matched = mergeScripts(scripts, task);
   const hotFollowups = followups.filter((item) => ["A高意向", "B中意向"].includes(firstValue(item["意向等级"])));
   return [
     `<title>${escapeXml(`${taskTitle(task)}｜转化私聊话术`)}</title>`,
@@ -170,13 +171,14 @@ export function buildDashboardBrief(task, dashboardRows = [], followups = []) {
 }
 
 export function buildAwardBrief(task) {
+  const activity = inferActivity(task);
   const awards = listValue(task["奖项设置"]);
   const names = parseNames(task["学生名单"]);
   return [
     `<title>${escapeXml(`${taskTitle(task)}｜表彰物料生成说明`)}</title>`,
     taskHeader(task, "第一版先生成表彰执行说明；海报/PPT可继续使用本地红金模板脚本批量导出。"),
     "<h1>一、奖项设置</h1>",
-    awards.length ? `<ul>${awards.map((award) => li(award)).join("")}</ul>` : p("未填写奖项设置，建议使用连续打卡之星、进步突破之星、错题攻坚之星、课堂专注之星、暑假潜力之星。"),
+    awards.length ? `<ul>${awards.map((award) => li(localizeTaskText(award, task))).join("")}</ul>` : p(`未填写奖项设置，建议使用连续打卡之星、进步突破之星、错题攻坚之星、课堂专注之星、${activity.potentialAward}。`),
     "<h1>二、学生名单</h1>",
     names.length ? tableWithHeader(["序号", "姓名"], names.map((name, index) => [String(index + 1), name])) : p("未填写学生名单。"),
     "<h1>三、发群建议</h1>",
@@ -189,10 +191,11 @@ export function buildAwardBrief(task) {
 }
 
 function taskHeader(task, description) {
+  const activity = inferActivity(task);
   return [
     `<callout emoji="✅" background-color="light-green" border-color="green">`,
-    p(description),
-    p(`项目：${task["所属项目"] || task["任务名称"] || "未填写"}；学校/城市：${task["城市/学校"] || "未填写"}；活动：${task["活动名称"] || "暑假加油站"}。`),
+    p(localizeTaskText(description, task)),
+    p(localizeTaskText(`项目：${task["所属项目"] || task["任务名称"] || "未填写"}；学校/城市：${task["城市/学校"] || "未填写"}；活动：${task["活动名称"] || activity.name}。`, task)),
     `</callout>`
   ].join("\n");
 }
@@ -204,13 +207,13 @@ function scriptSection(scripts, scenes) {
   ].join("\n")).join("\n");
 }
 
-function mergeScripts(scripts) {
+function mergeScripts(scripts, task = {}) {
   const active = scripts.filter((item) => firstValue(item["状态"]) !== "停用");
-  const mapped = new Map(BUILTIN_SCRIPTS.map((script) => [script.scene, script.text]));
+  const mapped = new Map(BUILTIN_SCRIPTS.map((script) => [script.scene, localizeTaskText(script.text, task)]));
   for (const item of active) {
     const scene = firstValue(item["使用场景"]);
     const text = item["话术正文"];
-    if (scene && text) mapped.set(scene, text);
+    if (scene && text) mapped.set(scene, localizeTaskText(text, task));
   }
   return mapped;
 }
@@ -226,7 +229,18 @@ function inferDays(task) {
 }
 
 function taskTitle(task) {
-  return task["任务名称"] || `${task["城市/学校"] || "洋葱学园"}${task["活动名称"] || "暑假加油站"}`;
+  const activity = inferActivity(task);
+  return localizeTaskText(task["任务名称"] || `${task["城市/学校"] || "洋葱学园"}${task["活动名称"] || activity.name}`, task);
+}
+
+function localizeTaskText(text, task) {
+  return applyGenerationRules(text, {
+    record: task,
+    stageText: firstValue(task["年级/学段"]) || firstValue(task["学段"]) || "",
+    targetRegion: task["城市/学校"] || "",
+    city: task["城市/学校"] || "",
+    dayCount: inferDays(task)
+  });
 }
 
 function parseNames(value) {
