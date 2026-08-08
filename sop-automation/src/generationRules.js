@@ -34,6 +34,7 @@ export function inferActivity(project) {
         [/暑假训练营/g, "开学收心营"],
         [/暑假后半段/g, "开学前后关键阶段"],
         [/后半段暑假/g, "开学前后关键阶段"],
+        [/暑假白天热/g, "开学前后节奏容易乱"],
         [/暑假天气热/g, "开学前后节奏紧"],
         [/暑假社群运营/g, "开学季社群运营"],
         [/暑假在家/g, "开学前后"],
@@ -95,7 +96,9 @@ export function applyStageRules(body, { stageText, targetRegion, city }) {
     .replaceAll("小学、初中、高中", stage)
     .replaceAll("小学重点讲习惯和兴趣，初中重点讲漏洞和错题，高中重点讲规划和效率。", stageFocusSentence(stage))
     .replaceAll("小学孩子看兴趣和习惯，初中孩子看知识点是否听懂，高中孩子看能否跟上节奏。", stageChildFocusSentence(stage))
-    .replaceAll("不是所有孩子都适合直接培优。小学看兴趣和理解力，初中看基础漏洞，高中看时间规划和效率。", `不是所有孩子都适合直接培优。${stage}孩子先看基础掌握和学习状态，适合的才加难度，不适合的先补基础。`);
+    .replaceAll("不是所有孩子都适合直接培优。小学看兴趣和理解力，初中看基础漏洞，高中看时间规划和效率。适合的才加难度，不适合的先补基础。", stageSelectiveAdvancedSentence(stage))
+    .replaceAll("不是所有孩子都适合直接培优。小学看兴趣和理解力，初中看基础漏洞，高中看时间规划和效率。", stageSelectiveAdvancedSentence(stage))
+    .replace(/示例：([^\n-]+)-初一-小宇-抖音-已入群/g, `示例：$1-${stageExampleGrade(stage)}-小宇-抖音-已入群`);
 }
 
 function stageFocusSentence(stageText) {
@@ -122,6 +125,17 @@ function stageChildFocusSentence(stageText) {
     return "高中孩子重点看能否跟上节奏、能否规划时间、能否针对薄弱模块复盘。";
   }
   return `${stageText}孩子按年级差异观察学习习惯、知识掌握、错题复盘和学习效率。`;
+}
+
+function stageSelectiveAdvancedSentence(stageText) {
+  return `不是所有孩子都适合直接培优。${stageText}孩子先看基础掌握和学习状态，适合的才加难度，不适合的先补基础。`;
+}
+
+function stageExampleGrade(stageText) {
+  if (isOnlyStage(stageText, "小学")) return "四年级";
+  if (isOnlyStage(stageText, "高中")) return "高一";
+  if (isOnlyStage(stageText, "初中")) return "初一";
+  return "对应年级";
 }
 
 function isOnlyStage(stageText, stage) {

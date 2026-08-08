@@ -209,3 +209,36 @@ test("moves post-camp followup outside numbered camp days", () => {
   assert.match(content, /## 结营后追单期（T\+1追单期）/);
   assert.doesNotMatch(content, /Day15/);
 });
+
+test("cleans stage examples and duplicated advanced-course wording", () => {
+  const project = {
+    "项目名称": "长沙中建仰天湖小学开学收心营",
+    "城市": ["长沙"],
+    "区县/校区": "天心区",
+    "学段": ["小学"],
+    "社群周期": ["14天"],
+    "模板类型": ["转化加强版"],
+    "产品重点": ["同步学"]
+  };
+  const template = {
+    "模板名称": "衡阳本地14天洋葱学园暑假加油站SOP",
+    "状态": ["启用"],
+    "周期类型": ["14天"],
+    "模板类型": "本地化暑假加油站SOP",
+    "运营阶段": ["纯服务", "服务转化"],
+    "适用城市/区域": "湖南衡阳",
+    "适用学段": ["小学"],
+    "模板正文": [
+      "示例：衡阳-初一-小宇-抖音-已入群",
+      "不是所有孩子都适合直接培优。小学看兴趣和理解力，初中看基础漏洞，高中看时间规划和效率。适合的才加难度，不适合的先补基础。",
+      "建议上午或晚上选一个稳定时段，暑假白天热。"
+    ].join("\n")
+  };
+
+  const content = buildSopDocument(project, [], [template]);
+
+  assert.match(content, /示例：长沙-四年级-小宇-抖音-已入群/);
+  assert.match(content, /小学孩子先看基础掌握和学习状态，适合的才加难度，不适合的先补基础。/);
+  assert.match(content, /开学前后节奏容易乱/);
+  assert.doesNotMatch(content, /初一-小宇|适合的才加难度，不适合的先补基础。适合的才加难度|开学前后白天热/);
+});
