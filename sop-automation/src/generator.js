@@ -35,7 +35,7 @@ function buildFallbackSopDocument(project, materials, templates = []) {
   const templateType = firstValue(project["模板类型"]) || "服务转化版";
   const stages = listValue(project["学段"]);
   const productPoints = listValue(project["产品重点"]);
-  const needsClosing = Boolean(project["是否需要结营表彰"]);
+  const needsClosing = enabledValue(project["是否需要结营表彰"]);
 
   const dayCount = inferDayCount(project, period, startDate);
   const endDate = inferEndDate(project, startDate, dayCount);
@@ -105,7 +105,7 @@ function buildTemplateFirstSop(project, materials, template) {
   const weekendRule = firstValue(project["周末规则"]) || "按模板执行";
   const stages = listValue(project["学段"]);
   const productPoints = listValue(project["产品重点"]);
-  const needsClosing = Boolean(project["是否需要结营表彰"]);
+  const needsClosing = enabledValue(project["是否需要结营表彰"]);
   const dayCount = inferDayCount(project, period, startDate);
   const endDate = inferEndDate(project, startDate, dayCount);
   const serviceDays = SERVICE_DAYS[period] ?? Math.max(dayCount - 2, 1);
@@ -237,8 +237,16 @@ function selectTemplate(project, templates) {
   const stages = listValue(project["学段"]);
   const productPoints = listValue(project["产品重点"]);
 
-  return active
-    .map((template) => ({ template, score: scoreTemplate(template, { city, period, templateType, stages, productPoints }) }))
+  const projectInfo = { city, period, templateType, stages, productPoints };
+  const candidates = active.filter((template) => {
+    const templateKind = [template["模板名称"], template["模板类型"], listValue(template["运营阶段"]).join(" ")].join(" ");
+    return !isClosingOnlyTemplate(templateKind) || isClosingOnlyRequest(projectInfo);
+  });
+
+  if (!candidates.length) return null;
+
+  return candidates
+    .map((template) => ({ template, score: scoreTemplate(template, projectInfo) }))
     .sort((a, b) => b.score - a.score)[0]?.template || null;
 }
 
@@ -555,6 +563,16 @@ function numberValue(value) {
   const parsed = Number(raw);
   if (!Number.isFinite(parsed)) return 0;
   return Math.min(Math.max(Math.round(parsed), 1), 31);
+}
+
+function enabledValue(value) {
+  if (value === true) return true;
+  if (value === false || value == null) return false;
+  const values = Array.isArray(value) ? value : [value];
+  return values.some((item) => {
+    const text = String(item?.text ?? item?.name ?? item ?? "").trim().toLowerCase();
+    return ["true", "yes", "y", "1", "是", "需要", "开启", "勾选"].includes(text);
+  });
 }
 
 function table(rows) {

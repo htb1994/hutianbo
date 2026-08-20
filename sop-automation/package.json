@@ -11,7 +11,8 @@
     "webhook": "node src/webhookServer.js",
     "render:start": "node scripts/render-start.js",
     "once": "node src/server.js --once",
-    "dry-run": "node src/server.js --once --dry-run"
+    "dry-run": "node src/server.js --once --dry-run",
+    "test": "node --test tests/*.test.js"
   },
   "dependencies": {
     "@larksuite/cli": "1.0.60"

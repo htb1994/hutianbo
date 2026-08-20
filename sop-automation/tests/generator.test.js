@@ -349,3 +349,60 @@ test("appends closing ceremony module to template-first full SOP when enabled", 
   assert.match(content, /连续打卡之星、进步突破之星、错题攻坚之星、课堂专注之星、暑假潜力之星/);
   assert.match(content, /先发结营开场文字，再发奖项海报/);
 });
+
+test("does not append closing ceremony module when field explicitly says no", () => {
+  const project = {
+    "项目名称": "衡阳初中14天暑假加油站SOP",
+    "城市": ["衡阳"],
+    "区县/校区": "蒸湘区",
+    "学段": ["初中"],
+    "社群周期": ["14天"],
+    "模板类型": ["服务转化版"],
+    "是否需要结营表彰": ["不需要"],
+    "产品重点": ["同步学"]
+  };
+  const template = {
+    "模板名称": "衡阳本地14天洋葱学园暑假加油站SOP-参考框架版",
+    "状态": ["启用"],
+    "周期类型": ["14天"],
+    "模板类型": "服务转化版",
+    "运营阶段": ["纯服务", "服务转化"],
+    "适用城市/区域": "湖南衡阳",
+    "适用学段": ["初中"],
+    "模板正文": "## Day1（纯服务）\n开营。\n## Day14（结营）\n总结。"
+  };
+
+  const content = buildSopDocument(project, [], [template]);
+
+  assert.doesNotMatch(content, /结营表彰附加执行模块/);
+});
+
+test("falls back to full SOP structure when only closing-only template is available", () => {
+  const project = {
+    "项目名称": "益阳赫山区初中14天开学收心营社群SOP",
+    "城市": ["益阳"],
+    "区县/校区": "赫山区",
+    "学段": ["初中"],
+    "社群周期": ["14天"],
+    "模板类型": ["服务转化版"],
+    "是否需要结营表彰": true,
+    "产品重点": ["同步学"]
+  };
+  const closingOnlyTemplate = {
+    "模板名称": "洋葱学园暑假加油站结营表彰群内执行SOP",
+    "状态": ["启用"],
+    "周期类型": ["14天"],
+    "模板类型": "结营表彰执行SOP",
+    "运营阶段": ["结营表彰"],
+    "适用城市/区域": "湖南通用",
+    "适用学段": ["初中"],
+    "模板正文": "## 群内结营表彰详细执行流程\n只做表彰。"
+  };
+
+  const content = buildSopDocument(project, [], [closingOnlyTemplate]);
+
+  assert.match(content, /每日执行SOP/);
+  assert.match(content, /Day 1/);
+  assert.match(content, /Day 14/);
+  assert.doesNotMatch(content, /只做表彰/);
+});
