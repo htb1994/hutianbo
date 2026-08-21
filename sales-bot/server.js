@@ -65,17 +65,24 @@ function decryptEvent(data) {
 }
 
 const server = http.createServer((req, res) => {
+  console.log(`[sales-bot] ${req.method} ${req.url}`);
   if (req.method === "GET" && req.url === "/health") return json(res, { ok: true, service: "sales-bot" });
   if (req.method !== "POST" || req.url !== "/events") return json(res, { ok: false, error: "not_found" });
   let body = "";
   req.on("data", (chunk) => { body += chunk; });
   req.on("end", () => {
     const data = decryptEvent(JSON.parse(body || "{}"));
+    console.log(`[sales-bot] event received: ${data.event?.message?.message_type || data.type || "challenge"}`);
     if (data.challenge) return json(res, { challenge: data.challenge });
     const message = data.event?.message || {};
     let content = message.content || "";
     try { content = JSON.parse(content).text || content; } catch {}
-    if (message.chat_id && content) processMessage(message.chat_id, content).catch((e) => console.error("[sales-bot]", e));
+    if (message.chat_id && content) {
+      console.log(`[sales-bot] processing chat ${message.chat_id}`);
+      processMessage(message.chat_id, content).catch((e) => console.error("[sales-bot] processing failed", e));
+    } else {
+      console.warn("[sales-bot] event had no chat_id or content");
+    }
     json(res, { ok: true });
   });
 });
