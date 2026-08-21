@@ -32,7 +32,14 @@ async function createRecord(text) {
 }
 
 async function getRecord(id) {
-  return (await run(["base", "+record-get", "--base-token", base, "--table-id", table, "--record-id", id, "--as", "bot", "--format", "json"])).data;
+  const payload = (await run(["base", "+record-get", "--base-token", base, "--table-id", table, "--record-id", id, "--as", "bot", "--format", "json"])).data || {};
+  // The CLI's JSON format is a columnar matrix, so normalize it to the
+  // field-name object used by the polling logic.
+  if (Array.isArray(payload.fields) && Array.isArray(payload.data)) {
+    const row = payload.data[0] || [];
+    return Object.fromEntries(payload.fields.map((name, index) => [name, row[index]]));
+  }
+  return payload;
 }
 
 async function processMessage(chatId, text) {
