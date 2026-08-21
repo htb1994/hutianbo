@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildProjectRecord, missingFields, parseProjectRequest } from "../src/botAssistant.js";
+import { buildProjectRecord, detectIntent, missingFields, parseProjectRequest } from "../src/botAssistant.js";
+
+test("routes multiple Feishu bot functions by intent", () => {
+  assert.equal(detectIntent("生成衡阳成章实验中学初中14天SOP"), "sop");
+  assert.equal(detectIntent("查结营邀约话术"), "script");
+  assert.equal(detectIntent("查长沙项目进度"), "progress");
+  assert.equal(detectIntent("/help"), "help");
+});
 
 test("parse complete SOP request from a Feishu bot message", () => {
   const project = parseProjectRequest("生成衡阳市成章实验中学初中14天开学收心营SOP，8月24日开始，周末轻服务，服务转化版，产品重点同步学、同步刷题、专项突破、学情报告，需要结营表彰");

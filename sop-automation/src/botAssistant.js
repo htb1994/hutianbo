@@ -1,5 +1,6 @@
 import { loadConfig } from "./config.js";
 import { createLarkClient } from "./larkCli.js";
+import { PROJECT_FIELDS, SCRIPT_FIELDS, firstValue, listValue, rowsToObjects } from "./records.js";
 
 const DEFAULT_PRODUCTS = ["同步学", "同步刷题", "专项突破", "学情报告"];
 const PRODUCT_KEYWORDS = ["同步学", "提前学", "同步刷题", "专项突破", "试卷库", "高频错题", "学情报告", "组合品"];
@@ -14,8 +15,17 @@ const handledEvents = new Set();
 export function createBotAssistant(options = {}) {
   const config = loadConfig();
   const lark = createLarkClient(config);
-  const bot = new SopBot({ config, lark, ...options });
-  return bot;
+  return new SopBot({ config, lark, ...options });
+}
+
+export function detectIntent(text) {
+  const normalized = normalizeText(text);
+  if (/^\/?(help|帮助|菜单|功能)$/i.test(normalized)) return "help";
+  if (/^\/?(reset|重新来|重置)$/i.test(normalized)) return "reset";
+  if (/^\/?(status|进度|查进度)$/i.test(normalized) || /(进度|状态|链接|生成好了吗|好了没|查一下)/.test(normalized)) return "progress";
+  if (/(话术|怎么说|私聊|群发|朋友圈|邀约|异议|催打卡|未打卡|转化话术|群公告)/.test(normalized)) return "script";
+  if (/(SOP|sop|社群运营|开学收心营|暑假加油站|寒假|训练营|加油站)/.test(normalized) || /^生成/.test(normalized)) return "sop";
+  return "unknown";
 }
 
 export function parseProjectRequest(text, previous = {}) {
@@ -101,19 +111,19 @@ class SopBot {
     const event = body?.event || {};
     const message = event.message || {};
     if (message.message_type && message.message_type !== "text") {
-      await this.reply(message.message_id, "我现在第一版先支持文字生成 SOP。你可以直接发：生成衡阳成章实验中学初中14天开学收心营SOP，8月24日开始。");
+      await this.reply(message.message_id, "我现在第一版先支持文字消息。你可以发 /help 看我能做什么。");
       return { ok: true, ignored: "non_text" };
     }
 
     const rawText = extractText(message);
     const text = stripBotMention(rawText, message.mentions);
-    if (!shouldHandleMessage(text, message)) return { ok: true, ignored: "not_sop_request" };
+    if (!shouldHandleMessage(text, message)) return { ok: true, ignored: "not_bot_request" };
 
     const sessionKey = buildSessionKey(event, message);
     this.processMessage({ sessionKey, messageId: message.message_id, text }).catch((error) => {
       console.error("[sop-bot] 处理消息失败", error);
       if (message.message_id) {
-        this.reply(message.message_id, `生成失败了：${shortError(error)}\n你可以补充完整信息后再发一次。`).catch(() => {});
+        this.reply(message.message_id, `处理失败了：${shortError(error)}\n你可以补充完整信息后再发一次。`).catch(() => {});
       }
     });
 
@@ -121,23 +131,38 @@ class SopBot {
   }
 
   async processMessage({ sessionKey, messageId, text }) {
-    if (/^\/?(help|帮助)$/i.test(text.trim())) {
+    const intent = detectIntent(text);
+
+    if (intent === "help") {
       await this.reply(messageId, helpText());
       return;
     }
 
-    if (/^\/?(reset|重新来|重置)$/i.test(text.trim())) {
+    if (intent === "reset") {
       sessions.delete(sessionKey);
       await this.reply(messageId, "已重置。你可以重新发：生成长沙某某学校初中14天开学收心营SOP，8月24日开始。");
       return;
     }
 
-    if (/^\/?(status|进度|查进度)$/i.test(text.trim())) {
-      const session = sessions.get(sessionKey);
-      await this.reply(messageId, session ? statusText(session.project) : "当前会话没有正在补齐的 SOP 需求。");
+    if (intent === "progress") {
+      await this.handleProgress({ sessionKey, messageId, text });
       return;
     }
 
+    if (intent === "script") {
+      await this.handleScript({ messageId, text });
+      return;
+    }
+
+    if (intent === "unknown") {
+      await this.reply(messageId, unknownIntentText());
+      return;
+    }
+
+    await this.handleSop({ sessionKey, messageId, text });
+  }
+
+  async handleSop({ sessionKey, messageId, text }) {
     const session = sessions.get(sessionKey) || { project: {} };
     const project = parseProjectRequest(text, session.project);
     const missing = missingFields(project);
@@ -151,10 +176,9 @@ class SopBot {
     sessions.delete(sessionKey);
     await this.reply(messageId, `收到，开始生成：${project.projectName}\n我会先写入项目配置表，然后自动生成云文档。`);
 
-    const record = buildProjectRecord(project);
     const created = await this.lark.createRecords({
       tableId: this.config.tables.projects,
-      records: [record]
+      records: [buildProjectRecord(project)]
     });
     const recordId = created.data?.record_id_list?.[0];
     if (!recordId) throw new Error(`项目配置记录创建成功但没有返回 record_id：${JSON.stringify(created).slice(0, 300)}`);
@@ -162,6 +186,50 @@ class SopBot {
     const { processProjectByRecordId } = await import("./server.js");
     const result = await processProjectByRecordId(recordId, { force: true });
     await this.reply(messageId, doneText(project, result?.url, recordId));
+  }
+
+  async handleProgress({ sessionKey, messageId, text }) {
+    const session = sessions.get(sessionKey);
+    if (session?.project && missingFields(session.project).length) {
+      await this.reply(messageId, `当前还有一条 SOP 需求没补齐：\n${statusText(session.project)}`);
+      return;
+    }
+
+    const keyword = parseProgressKeyword(text);
+    const records = await this.fetchProjectRecords();
+    const matched = findProgressRecords(records, keyword);
+    await this.reply(messageId, progressText(matched, keyword));
+  }
+
+  async handleScript({ messageId, text }) {
+    const request = parseScriptRequest(text);
+    const scripts = await this.fetchScripts();
+    const matched = matchScripts(scripts, request);
+    await this.reply(messageId, scriptReplyText(request, matched));
+  }
+
+  async fetchProjectRecords() {
+    const response = await this.lark.listRecords({
+      tableId: this.config.tables.projects,
+      fields: PROJECT_FIELDS,
+      limit: this.config.defaults.pollLimit || 100
+    });
+    return rowsToObjects(response).filter((record) => record["项目名称"]);
+  }
+
+  async fetchScripts() {
+    if (!this.config.tables.scripts) return [];
+    try {
+      const response = await this.lark.listRecords({
+        tableId: this.config.tables.scripts,
+        fields: SCRIPT_FIELDS,
+        limit: this.config.defaults.pollLimit || 100
+      });
+      return rowsToObjects(response).filter((record) => !firstValue(record["状态"]) || firstValue(record["状态"]) === "可用");
+    } catch (error) {
+      console.warn("[sop-bot] 话术库读取失败", error.message);
+      return [];
+    }
   }
 
   async reply(messageId, text) {
@@ -209,7 +277,7 @@ function shouldHandleMessage(text, message) {
   const value = String(text || "").trim();
   if (!value) return false;
   if (message.chat_type === "p2p") return true;
-  return /SOP|sop|生成|社群|话术|进度|帮助|\/help|\/status|\/reset/.test(value);
+  return detectIntent(value) !== "unknown";
 }
 
 function buildSessionKey(event, message) {
@@ -329,21 +397,174 @@ function statusText(project) {
 function doneText(project, url, recordId) {
   return [
     `已生成：${project.projectName}`,
-    `状态：待审核`,
+    "状态：待审核",
     url ? `云文档：${url}` : "云文档：已生成，但链接暂未返回，请到项目配置表查看。",
     `项目配置记录：${recordId}`
   ].join("\n");
 }
 
+function parseProgressKeyword(text) {
+  return normalizeText(text)
+    .replace(/^\/?(status|进度|查进度)/i, "")
+    .replace(/(查一下|查|看看|进度|状态|链接|生成好了吗|好了没|怎么样|的)/g, " ")
+    .trim();
+}
+
+function findProgressRecords(records, keyword) {
+  const sorted = [...records].reverse();
+  if (!keyword) return sorted.slice(0, 5);
+  const words = keyword.split(/[\s,，、]+/).filter(Boolean);
+  return sorted.filter((record) => {
+    const haystack = [
+      record["项目名称"],
+      firstValue(record["城市"]),
+      record["区县/校区"],
+      firstValue(record["生成状态"])
+    ].join(" ");
+    return words.every((word) => haystack.includes(word));
+  }).slice(0, 5);
+}
+
+function progressText(records, keyword) {
+  if (!records.length) {
+    return keyword
+      ? `没有查到和「${keyword}」匹配的 SOP 记录。你可以换项目名、城市或学校再查一次。`
+      : "暂时没有查到 SOP 项目记录。";
+  }
+
+  return [
+    keyword ? `查到和「${keyword}」相关的记录：` : "最近的 SOP 记录：",
+    "",
+    ...records.map((record, index) => {
+      const url = record["SOP云文档链接"] || "暂无链接";
+      return [
+        `${index + 1}. ${record["项目名称"]}`,
+        `状态：${firstValue(record["生成状态"]) || "未填写"}`,
+        `城市/校区：${firstValue(record["城市"]) || ""}${record["区县/校区"] ? ` / ${record["区县/校区"]}` : ""}`,
+        `链接：${url}`,
+        `备注：${record["备注"] || "无"}`
+      ].join("\n");
+    })
+  ].join("\n");
+}
+
+function parseScriptRequest(text) {
+  const normalized = normalizeText(text);
+  return {
+    scenario: parseScenario(normalized),
+    stages: parseStages(normalized),
+    productPoints: parseProductPoints(normalized),
+    raw: normalized
+  };
+}
+
+function parseScenario(text) {
+  const scenarioMap = [
+    ["开营邀约", ["开营", "邀约", "邀请"]],
+    ["每日打卡", ["打卡", "每日"]],
+    ["未打卡提醒", ["未打卡", "催打卡", "提醒打卡"]],
+    ["课程价值", ["课程价值", "价值传递", "课程介绍"]],
+    ["结营表彰", ["结营", "表彰"]],
+    ["转化私聊", ["转化", "购买", "私聊", "续费", "组合品"]],
+    ["异议处理", ["异议", "太贵", "没时间", "不考虑"]],
+    ["群公告", ["群公告", "公告"]]
+  ];
+  const matched = scenarioMap.find(([, keywords]) => keywords.some((keyword) => text.includes(keyword)));
+  return matched?.[0] || "通用话术";
+}
+
+function matchScripts(scripts, request) {
+  return scripts
+    .map((script) => ({ script, score: scoreScript(script, request) }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3)
+    .map((item) => item.script);
+}
+
+function scoreScript(script, request) {
+  const haystack = [
+    script["话术名称"],
+    firstValue(script["使用场景"]),
+    listValue(script["适用学段"]).join(" "),
+    listValue(script["产品点"]).join(" "),
+    script["话术正文"]
+  ].join(" ");
+  let score = 0;
+  if (request.scenario && haystack.includes(request.scenario)) score += 10;
+  for (const stage of request.stages) {
+    if (haystack.includes(stage)) score += 4;
+  }
+  for (const product of request.productPoints) {
+    if (haystack.includes(product)) score += 4;
+  }
+  for (const keyword of request.raw.split(/[\s,，、]+/).filter((item) => item.length >= 2)) {
+    if (haystack.includes(keyword)) score += 1;
+  }
+  return score;
+}
+
+function scriptReplyText(request, scripts) {
+  if (scripts.length) {
+    return [
+      `给你匹配到 ${scripts.length} 条「${request.scenario}」话术：`,
+      "",
+      ...scripts.map((script, index) => [
+        `${index + 1}. ${script["话术名称"] || request.scenario}`,
+        script["话术正文"] || "这条话术正文为空，请到话术库补充。",
+        ""
+      ].join("\n"))
+    ].join("\n").trim();
+  }
+
+  return [
+    `话术库里暂时没匹配到「${request.scenario}」，先给你一版可直接发的：`,
+    "",
+    fallbackScript(request)
+  ].join("\n");
+}
+
+function fallbackScript(request) {
+  if (request.scenario === "结营表彰") {
+    return "各位家长、同学晚上好，本期洋葱学园学习陪伴到这里就进入收官阶段啦。我们会根据孩子这段时间的打卡、听课、练习和进步情况做一次小小的表彰，不是为了排名，而是让每个认真坚持的孩子被看见。也欢迎家长今晚一起见证孩子的努力。";
+  }
+  if (request.scenario === "转化私聊") {
+    return "家长您好，我看孩子这段时间在洋葱学园里的学习状态还是有亮点的，尤其是愿意跟着节奏完成练习。接下来如果想把这份状态延续到开学后，建议用同步学加专项练习继续巩固，我可以按孩子当前情况给您配一套更适合的组合方案，您看我发您参考一下可以吗？";
+  }
+  if (request.scenario === "未打卡提醒") {
+    return "家长您好，提醒一下孩子今天的洋葱学习任务还没有完成。今天内容不多，建议先完成视频学习，再做几道同步练习，把节奏稳住。暑假/开学前最重要的不是一天学很多，而是每天不断档。";
+  }
+  return "各位家长好，今天我们继续围绕孩子的学习习惯和薄弱点做陪伴。洋葱学园这边建议孩子先看对应知识点视频，再完成同步练习，最后把错题回看一遍。每天坚持一点点，开学后的状态会明显更稳。";
+}
+
+function unknownIntentText() {
+  return [
+    "我现在可以处理这些事：",
+    "1. 生成SOP：生成衡阳某某学校初中14天开学收心营SOP，8月24日开始",
+    "2. 查话术：查结营邀约话术 / 发一个未打卡提醒话术",
+    "3. 查进度：查衡阳成章实验中学进度",
+    "",
+    "你也可以发 /help 看完整示例。"
+  ].join("\n");
+}
+
 function helpText() {
   return [
-    "洋葱学园 SOP 助手第一版可以这样用：",
+    "我是洋葱学园社群运营助手，同一个机器人可以做这些事：",
     "",
-    "生成长沙中建仰天湖小学小学14天开学收心营SOP，8月24日开始，周末轻服务，服务转化版，产品重点同步学、提前学、同步刷题、学情报告，需要结营表彰。",
+    "1. 生成完整社群SOP",
+    "示例：生成长沙中建仰天湖小学小学14天开学收心营SOP，8月24日开始，周末轻服务，服务转化版，产品重点同步学、提前学、同步刷题、学情报告，需要结营表彰。",
+    "",
+    "2. 查询/生成话术",
+    "示例：查结营邀约话术 / 发一个未打卡提醒话术 / 给我一段组合品转化私聊话术",
+    "",
+    "3. 查询生成进度",
+    "示例：查长沙中建仰天湖进度 / /status",
     "",
     "常用命令：",
-    "/status 查看当前补齐进度",
-    "/reset 重置当前会话"
+    "/status 查看当前补齐进度或最近生成记录",
+    "/reset 重置当前会话",
+    "/help 查看功能菜单"
   ].join("\n");
 }
 
