@@ -1,5 +1,6 @@
 import http from "node:http";
 import { spawn } from "node:child_process";
+import crypto from "node:crypto";
 
 const port = Number(process.env.PORT || 8787);
 const cli = process.env.LARK_CLI_PATH || "node_modules/.bin/lark-cli";
@@ -54,13 +55,22 @@ function json(res, body) {
   res.end(raw);
 }
 
+function decryptEvent(data) {
+  if (!data.encrypt) return data;
+  const encryptKey = process.env.LARK_ENCRYPT_KEY;
+  if (!encryptKey) throw new Error("LARK_ENCRYPT_KEY is required for encrypted Feishu events");
+  const key = crypto.createHash("sha256").update(encryptKey).digest();
+  const decipher = crypto.createDecipheriv("aes-256-cbc", key, key.subarray(0, 16));
+  return JSON.parse(Buffer.concat([decipher.update(Buffer.from(data.encrypt, "base64")), decipher.final()]).toString("utf8"));
+}
+
 const server = http.createServer((req, res) => {
   if (req.method === "GET" && req.url === "/health") return json(res, { ok: true, service: "sales-bot" });
   if (req.method !== "POST" || req.url !== "/events") return json(res, { ok: false, error: "not_found" });
   let body = "";
   req.on("data", (chunk) => { body += chunk; });
   req.on("end", () => {
-    const data = JSON.parse(body || "{}");
+    const data = decryptEvent(JSON.parse(body || "{}"));
     if (data.challenge) return json(res, { challenge: data.challenge });
     const message = data.event?.message || {};
     let content = message.content || "";
