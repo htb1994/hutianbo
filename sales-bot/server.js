@@ -32,7 +32,7 @@ async function createRecord(text) {
 }
 
 async function getRecord(id) {
-  return (await run(["base", "+record-get", "--base-token", base, "--table-id", table, "--record-id", id, "--as", "bot"])).data;
+  return (await run(["base", "+record-get", "--base-token", base, "--table-id", table, "--record-id", id, "--as", "bot", "--format", "json"])).data;
 }
 
 async function processMessage(chatId, text) {
