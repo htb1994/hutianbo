@@ -41,9 +41,11 @@ async function processMessage(chatId, text) {
     await new Promise((r) => setTimeout(r, 5000));
     const record = await getRecord(id);
     const state = Array.isArray(record["生成状态"]) ? record["生成状态"][0] : record["生成状态"];
+    console.log(`[sales-bot] record ${id} state: ${state}`);
     if (["已完成", "需人工检查", "失败"].includes(state)) {
       const reply = `微信回复：${record["AI推荐回复"] || "暂无"}\n电话沟通版：${record["电话沟通版"] || "暂无"}\n下一步追问：${record["下一步追问"] || "暂无"}\n使用注意事项：${record["使用注意事项"] || "暂无"}\n质量状态：${state}`;
       await run(["im", "+messages-send", "--chat-id", chatId, "--text", reply, "--as", "bot"]);
+      console.log(`[sales-bot] reply sent to ${chatId}`);
       return;
     }
   }
