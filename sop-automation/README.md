@@ -93,6 +93,58 @@
 
 同事日常使用不需要打开终端，也不需要输入命令，只在飞书多维表格里操作。
 
+### 方式一：飞书机器人生成 SOP
+
+第一版机器人入口已经接入云端服务。同事可以在飞书里私聊机器人，或在群里 @ 机器人后发送一句完整需求。
+
+示例：
+
+```text
+生成长沙中建仰天湖小学小学14天开学收心营SOP，8月24日开始，周末轻服务，服务转化版，产品重点同步学、提前学、同步刷题、学情报告，需要结营表彰。
+```
+
+机器人会自动完成：
+
+1. 解析项目名称、城市、学校/校区、学段、周期、开始日期、周末规则、模板类型、产品重点。
+2. 如果缺少必要字段，会在当前会话追问。
+3. 信息完整后写入「项目配置」表。
+4. 自动调用 SOP 生成服务。
+5. 生成完成后把飞书云文档链接回复给老师。
+
+当前支持的机器人命令：
+
+```text
+/help    查看示例
+/status  查看当前补齐进度
+/reset   重置当前会话
+```
+
+如果要配置飞书开放平台事件订阅，请把机器人消息事件地址填写为：
+
+```text
+https://onion-sop-automation.onrender.com/api/lark/events
+```
+
+需要订阅事件：
+
+```text
+im.message.receive_v1
+```
+
+需要开通的常用权限：
+
+```text
+im:message
+im:message:send_as_bot
+base:record:read
+base:record:create
+base:record:update
+docx:document
+drive:drive
+```
+
+注意：机器人创建记录时会先写成 `生成中`，然后由云端服务直接生成，避免和多维表格自动化重复触发。
+
 ### 生成完整 SOP
 
 1. 打开飞书工作台：<https://guanghe.feishu.cn/base/NhJRb1nCLakcPEsFjSNcZ4lwnWt>

@@ -2,8 +2,10 @@ import http from "node:http";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "./config.js";
 import { processProjectByRecordId, processTaskByRecordId, tick } from "./server.js";
+import { createBotAssistant } from "./botAssistant.js";
 
 const config = loadConfig();
+const botAssistant = createBotAssistant();
 
 export function startWebhookServer(options = {}) {
   const port = Number(options.port || process.env.PORT || config.webhook?.port || 8787);
@@ -62,9 +64,10 @@ async function handleRequest(request, response) {
       message: "洋葱学园 SOP 自动生成服务运行中",
       endpoints: {
         health: "GET /health",
-        generate: "POST /api/generate"
+        generate: "POST /api/generate",
+        larkEvents: "POST /api/lark/events"
       },
-      usage: "在飞书多维表格中将生成状态改为待生成，即可触发自动生成。"
+      usage: "在飞书多维表格中将生成状态改为待生成，或在飞书机器人里发送生成 SOP 的需求，即可触发自动生成。"
     });
     return;
   }
@@ -101,6 +104,13 @@ async function handleRequest(request, response) {
       ok: true,
       data: result
     });
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/lark/events") {
+    const body = await readJsonBody(request);
+    const result = await botAssistant.handleEvent(body);
+    sendJson(response, 200, result);
     return;
   }
 

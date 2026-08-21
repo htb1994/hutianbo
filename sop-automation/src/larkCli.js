@@ -64,6 +64,29 @@ export function createLarkClient(config) {
         create_records: rows.map((row) => Object.fromEntries(fields.map((field, index) => [field, row[index]])))
       })
     ]),
+    createRecords: ({ tableId, records }) => run([
+      "base", "+record-batch-create",
+      "--as", identity,
+      "--base-token", config.baseToken,
+      "--table-id", tableId,
+      "--json", JSON.stringify({ create_records: records })
+    ]),
+    replyMessage: ({ messageId, text, markdown, idempotencyKey }) => run([
+      "im", "+messages-reply",
+      "--as", identity,
+      "--message-id", messageId,
+      ...(markdown ? ["--markdown", markdown] : ["--text", text || ""]),
+      ...(idempotencyKey ? ["--idempotency-key", idempotencyKey] : []),
+      "--format", "json"
+    ]),
+    sendMessage: ({ chatId, text, markdown, idempotencyKey }) => run([
+      "im", "+messages-send",
+      "--as", identity,
+      "--chat-id", chatId,
+      ...(markdown ? ["--markdown", markdown] : ["--text", text || ""]),
+      ...(idempotencyKey ? ["--idempotency-key", idempotencyKey] : []),
+      "--format", "json"
+    ]),
     createDoc: ({ content, docFormat = "xml", title }) => run([
       "docs", "+create",
       "--as", identity,
