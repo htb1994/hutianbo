@@ -6,6 +6,7 @@ const port = Number(process.env.PORT || 8787);
 const cli = process.env.LARK_CLI_PATH || "node_modules/.bin/lark-cli";
 const base = process.env.SALES_BASE_TOKEN || "QWHIbE8qHaucPfspVy5cFoiAnmc";
 const table = process.env.SALES_TABLE_ID || "tblvTOT0stTJ0i2t";
+const knowledgeDoc = process.env.SALES_KNOWLEDGE_DOC || "PXdMd9OJ3ocBHmxErdccWqLxnmb";
 
 function run(args, input) {
   return new Promise((resolve, reject) => {
@@ -26,9 +27,24 @@ async function initialize() {
 }
 
 async function createRecord(text) {
-  const body = { create_records: [{ "用例ID": "BOT-RENDER", "家长原话": text, "生成状态": "待生成" }] };
+  const knowledge = await fetchKnowledge(text);
+  const body = { create_records: [{ "用例ID": "BOT-RENDER", "家长原话": text, "补充背景": knowledge, "生成状态": "待生成" }] };
   const result = await run(["base", "+record-batch-create", "--base-token", base, "--table-id", table, "--as", "bot", "--json", JSON.stringify(body)]);
   return result.data.record_id_list[0];
+}
+
+async function fetchKnowledge(query) {
+  try {
+    const result = await run(["docs", "+fetch", "--doc", knowledgeDoc, "--as", "bot", "--doc-format", "markdown", "--scope", "full", "--format", "json"]);
+    const content = result?.data?.document?.content || "";
+    // Keep the generated record within practical field limits while retaining
+    // the current knowledge-base snapshot for the workflow.
+    const normalized = content.replace(/\s+/g, " ").trim();
+    return `知识库检索（${new Date().toISOString()}；问题：${query}）：${normalized.slice(0, 8000)}`;
+  } catch (error) {
+    console.error("[sales-bot] knowledge fetch failed", error.message);
+    return "知识库检索失败，请基于现有话术生成并标记需人工检查。";
+  }
 }
 
 async function getRecord(id) {
