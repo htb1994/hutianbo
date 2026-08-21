@@ -1,0 +1,9 @@
+{
+  "name": "onion-sales-bot",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@larksuite/cli": "1.0.60"
+  }
+}
