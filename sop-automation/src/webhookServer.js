@@ -1,12 +1,13 @@
 import http from "node:http";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "./config.js";
-import { processProjectByRecordId, processTaskByRecordId } from "./server.js";
+import { processProjectByRecordId, processTaskByRecordId, tick } from "./server.js";
 
 const config = loadConfig();
 
 export function startWebhookServer(options = {}) {
   const port = Number(options.port || process.env.PORT || config.webhook?.port || 8787);
+  const polling = startBackgroundPolling(options);
   const server = http.createServer((request, response) => {
     handleRequest(request, response).catch((error) => {
       console.error("[sop-webhook] 请求处理失败", error);
@@ -25,7 +26,30 @@ export function startWebhookServer(options = {}) {
     console.log("[sop-webhook] 生成接口：POST /api/generate");
   });
 
+  server.on("close", () => {
+    if (polling) clearInterval(polling);
+  });
+
   return server;
+}
+
+function startBackgroundPolling(options = {}) {
+  const enabled = options.enablePolling ?? process.env.SOP_ENABLE_POLLING !== "false";
+  if (!enabled) return null;
+
+  const intervalMs = Number(process.env.SOP_POLL_INTERVAL_MS || config.pollIntervalMs || 60000);
+  const run = () => {
+    tick().catch((error) => {
+      console.error("[sop-webhook] 兜底轮询失败", error);
+    });
+  };
+
+  const startupDelayMs = Number(process.env.SOP_POLL_STARTUP_DELAY_MS || 15000);
+  setTimeout(run, startupDelayMs).unref?.();
+  const timer = setInterval(run, intervalMs);
+  timer.unref?.();
+  console.log(`[sop-webhook] 兜底轮询已启用：每 ${intervalMs}ms 扫描待生成记录`);
+  return timer;
 }
 
 async function handleRequest(request, response) {
